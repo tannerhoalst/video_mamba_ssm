@@ -1,0 +1,15 @@
+codex --model=gpt-5.1-codex \
+  --dangerously-bypass-approvals-and-sandbox \
+  --enable web_search_request \
+  -c model_reasoning_effort="high"
+
+
+
+so if the file here : docs/video_depth_anything_v2_videos.texs
+
+if that file explains how the video depth anyting v2 model works for long vidoes using transformers, can you help me brainstorm how i could use a similar strategy, but where we use mamba
+ssm instead of transformers? this would help to make inference times much faster as mamba SSMs are linear instead of quadratic.
+
+could you hep me do this by creating another latex file in the docs folder, that could explain how we could do this? 
+
+dont read the other docs/video_mamab_depth.tex , as that is notes from another project that only works for images not vidoes. and thus will be irrelevant to you. 

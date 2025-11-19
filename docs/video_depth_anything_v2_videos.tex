@@ -1,0 +1,200 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{float}
+
+% Math packages
+\usepackage{amsmath}        % for align, bmatrix, etc.
+\usepackage{amsfonts}       % for \mathbb{}
+\usepackage{amssymb}        % for extra math symbols
+
+% For nicer text encoding (optional but recommended)
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+
+
+\title{VideoMambaDepth}
+\author{Tanner Hoalst}
+\date{November 2025}
+
+\begin{document}
+
+\maketitle
+
+\subsection*{Architecture}
+
+Due to the lack of sufficient video depth data, we start with a pre-trained image depth estimation model,
+Depth Anything V2, and adopt a joint training strategy using both image and video data.
+
+\textbf{Depth Anything V2 Encoder.}
+Depth Anything V2 is the current state-of-the-art monocular depth estimation model,
+characterized by its high accuracy and generalization capabilities. We use its trained model as our encoder.
+To reduce training costs and preserve well-learned features, the encoder is frozen during training.
+
+Unlike monocular depth encoders that only accept image input, our training scenario requires the encoder to
+process simultaneously both video and image data. To extract features from video frames with an image encoder,
+we collapse the temporal dimension of a video clip into the batch dimension. The input data are denoted as
+$\mathbf{X} \in \mathbb{R}^{(B \times N) \times C \times H \times W}$, where $B$ represents the batch size,
+$N$ is the number of frames in the video clip ($N = 1$ for the image as input), and $C, H, W$ are the number
+of channels, height, and width of the frames, respectively. The encoder takes $\mathbf{X}$ as input to
+produce a series of intermediate feature maps
+$\mathbf{F}_i \in \mathbb{R}^{(B \times N) \times (H/p \times W/p) \times C_i}$, where $p$ is the patch size
+of the encoder. Although the image encoder extracts strong visual representations from individual frames, it
+neglects the temporal information interactions between frames. Thus, the spatiotemporal head is introduced to
+model the temporal relationships among the frames.
+
+\textbf{Spatiotemporal Head.}
+The spatiotemporal head (STH) is built upon the DPT head, with the only modification being the
+insertion of temporal layers to capture temporal information. A temporal layer consists of a multi-head
+self-attention model (SA) and a feed-forward network (FFN). When inputting a feature
+$\mathbf{F}_i$ into the temporal layer, the temporal dimension $N$ is isolated, and self-attention is
+executed solely along the temporal dimension to facilitate the interaction of temporal features. To capture
+temporal positional relationships among different frames, we utilize absolute positional embedding to encode
+temporal positional information from the video sequence.
+
+The spatiotemporal head uniformly samples four feature maps from $\mathbf{F}_i$ (including the final features
+from the encoder, denoted as $\mathbf{F}_4$) as inputs, and predicts a depth map
+$\mathbf{D} \in \mathbb{R}^{H \times W}$. As shown in Figure~2, the selected features $\mathbf{F}_i$ are fed
+into the Reassemble layer to produce a feature pyramid. Then, the features are gradually fused from low
+resolution to high resolution by the Fusion layer. The Reassemble and Fusion layers are proposed by DPT.
+ The final fused high-resolution feature maps are passed through the output layer to produce the
+depth map $\mathbf{D}$. To reduce the additional computational load, we insert the temporal layer at a lower
+stage, which deals with lower feature resolutions.
+
+
+
+\subsection*{Temporal Gradient Matching Loss}
+
+In this section, we start with the Optical Flow Based Warping (OPW) loss, then explore new loss designs and
+ultimately propose a Temporal Gradient Matching Loss (TGM) that does not rely on optical flow, yet still
+ensures the temporal consistency of predictions between frames.
+
+\textbf{OPW loss.}
+To constrain temporal consistency, previous video models such as assume that the depths at
+corresponding positions in adjacent frames, identified through optical flow, are consistent, e.g., the Optical
+Flow Based Warping (OPW) loss proposed in NVDIS. OPW loss is computed after obtaining corresponding
+points on the basis of optical flow and warping. Specifically, for two consecutive depth prediction results,
+$p_i$ and $p_{i+1}$, $p_{i+1}$ is warped to $\hat{p}_i$ according to the warping relationship derived from the
+optical flow, and then the loss is calculated with:
+
+\[
+\mathcal{L}_{\mathrm{OPW}}
+= \frac{1}{N-1} \sum_{i=1}^{N-1} \|\, p_i - \hat{p}_i \,\|_1,
+\tag{1}
+\]
+
+where $N$ denotes the length of a video window, and $\|\cdot\|_1$ represents $\ell_1$ distance. However, there is
+a fundamental issue with the OPW loss: the depth of corresponding points is \textit{not} invariant across adjacent
+frames. This assumption holds true only when adjacent frames are stationary. For instance, in a driving scenario,
+when a car is moving forward, the distance to static objects in front decreases relative to the car, violating
+the assumption of $\mathcal{L}_{\mathrm{OPW}}$. To address this inherent issue of OPW, we propose a new loss
+function to constrain the temporal consistency of depth.
+
+\textbf{Temporal gradient matching loss (TGM).}
+When calculating the loss, we do not assume that the depth of the corresponding points in adjacent frames remains
+unchanged. Instead, we posit that the \textit{change} in depth of corresponding points between adjacent prediction
+frames should be consistent with the change observed in ground truth. We refer to this discrepancy as a stable
+error (SE) given by:
+
+\[
+\mathcal{L}_{\mathrm{SE}}
+= \frac{1}{N-1} \sum_{i=1}^{N-1}
+\big\|
+\hat{d}_i - d_i
+\;-\;
+\big( \hat{g}_i - g_i \big)
+\big\|_1,
+\tag{2}
+\]
+
+Here, $d_i, g_i$ are scaled and shifted versions of the predictions and ground truth. $\hat{d}_i, \hat{g}_i$
+denote the warped depth from the subsequent frame using optical flow. $|\cdot|$ is used to represent the absolute
+values.
+
+However, generating optical flow incurs additional overhead. To address the dependence on optical flow, we further
+generalize the above assumption. Specifically, it is not necessary to use the corresponding points obtained from
+optical flow. Instead, we directly use the depth at the same coordinate in adjacent frames to calculate the loss.
+The assumption is that the change in depth at the same image position between adjacent frames should be consistent
+with that in the ground truth. Since this process is akin to calculating the gradient of values in temporal
+dimension, we name it Temporal Gradient Matching Loss, as given by:
+
+\[
+\mathcal{L}_{\mathrm{TGM}}
+= \frac{1}{N-1} \sum_{i=1}^{N-1}
+\big\|
+d_{i+1} - d_i
+\;-\;
+\big( g_{i+1} - g_i \big)
+\big\|_1.
+\tag{3}
+\]
+
+In practice, we only compute the TGM loss in regions where the change in ground truth depth,
+i.e., $|g_{i+1} - g_i| < 0.05$. This threshold helps to avoid sudden changes in depth map caused by edges,
+dynamic objects, and other factors that introduce unsteadiness during training.
+
+Our total loss to supervise video depth data is as follows:
+
+\[
+\mathcal{L}_{\mathrm{all}}
+= \alpha \mathcal{L}_{\mathrm{TGM}} + \beta \mathcal{L}_{\mathrm{SE}},
+\tag{4}
+\]
+
+where $\mathcal{L}_{\mathrm{SE}}$ is a scale- and shift-invariant loss to supervise single images proposed by
+MiDaS. $\alpha$ and $\beta$ are weights to balance spatio-temporal consistency and spatial structure in a
+single frame.
+
+
+
+\section*{Inference strategy for super-long sequence}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/inference_strategy_long_videos.png}
+    \caption{\textbf{Inference strategy for long videos.} 
+    $N$ is the video clip length consumed by our model. Each inference video clip is built by 
+    $N - T_0 - T_k$ future frames, $T_0$ overlapping/adjacent frames, and $T_k$ key frames. 
+    The key frames are selected by taking every $\Delta_k$-th frame going backward. 
+    Then, the new depth predictions will be scale-shift-aligned to the previous frames based on the 
+    $T_k$ overlapping frames. We use $N = 32$, $T_0 = 8$, $T_k = 2$, $\Delta_k = 12$.}
+    \label{fig:long_inference}
+\end{figure}
+
+To handle videos of arbitrary length, a straightforward approach is simply to concatenate the model outputs 
+from different video windows. However, this method fails to ensure smooth transitions between windows. A 
+more sophisticated technique entails inferring video windows with overlapping regions. By utilizing the 
+predicted depth of the overlapping regions to compute an affine transform, predictions from one window can 
+be aligned with those from another. Nevertheless, this method can introduce accumulated errors through 
+successive affine alignments, leading to drift in extended videos. To address these challenges in ultra-long 
+videos with a limited inference window size, we proposed key-frame referencing to inherit scale and shift 
+information from past predictions and overlapping interpolation to ensure smooth inference across local windows.
+
+\textbf{Key-frame referencing.}
+As illustrated in Fig.~\ref{fig:long_inference}, a subsequent video clip for inference is composed of 
+three parts: $N - T_0 - T_k$ future frames, $T_0$ overlapping frames from the previous clip, and $T_k$ key 
+frames. The key frames are subsampled from the previous frames with an interval of size $\Delta_k$. 
+Therefore, the video clip to be consumed shares the same length as during training. This approach 
+incorporates content from earlier windows into the current window with minimal computation burden. 
+Furthermore, we carefully select the values of $T_k$ and $\Delta_k$ to ensure that the first frame of a 
+video is always positioned at the beginning of each clip, thereby enhancing depth consistency for extended 
+videos. According to our experimental results, such simple strategy can significantly reduce accumulated 
+scale drift, especially for long video.
+
+\textbf{Depth clip stitching.}
+Using $T_0$ overlapping frames (in Fig.~\ref{fig:long_inference}) between two consecutive windows is crucial 
+for avoiding flickering depth predictions. The effects of overlapping frames are twofold. First, by sharing 
+partial frame features, the depth content across consecutive windows will be more similar. Second, the depth 
+prediction for the overlapping frames is updated by interpolating between the two segments. Assume the depth 
+for the $o_i$-th overlapping frame from the previous window is denoted by $D^{\mathrm{pre}}_{o_i}$ and the 
+current segment’s depth is denoted by $D^{\mathrm{cur}}_{o_i}$. The final depth is updated as
+
+\[
+D_{o_i} = D^{\mathrm{pre}}_{o_i} \cdot \frac{i}{T_0}
+          + D^{\mathrm{cur}}_{o_i} \cdot \left( 1 - \frac{i}{T_0} \right),
+\]
+
+where $i$ ranges from $1$ to $T_0$.
+
+
+\end{document}

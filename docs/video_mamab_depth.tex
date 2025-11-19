@@ -1,0 +1,353 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{float}
+
+% Math packages
+\usepackage{amsmath}        % for align, bmatrix, etc.
+\usepackage{amsfonts}       % for \mathbb{}
+\usepackage{amssymb}        % for extra math symbols
+
+% For nicer text encoding (optional but recommended)
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+
+
+\title{VideoMambaDepth}
+\author{Tanner Hoalst}
+\date{November 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{State-Space Models}
+
+State Space Sequence Models (SSMs) represent a category of systems that transform a 
+one-dimensional function or sequence $u(t)$ into $y(t)$. They are described by the following linear 
+Ordinary Differential Equation (ODE):
+
+\[
+x'(t) = A x(t) + B u(t),
+\tag{1}
+\]
+
+\[
+y(t) = C x(t) + D u(t).
+\tag{2}
+\]
+
+In this equation, $A \in \mathbb{R}^{N \times N}$ is the state matrix, and $B, C \in \mathbb{R}^N$ are its 
+parameters and skip connection $D \in \mathbb{R}^1$, with $x(t) \in \mathbb{R}^N$ symbolizing the implicit 
+latent state. SSMs possess several advantageous properties, such as linear complexity per time step and the 
+ability for parallel computations, which aid in efficient training. Yet, standard SSMs generally require 
+more memory compared to equivalent CNNs and face issues like vanishing gradients during training, limiting 
+their widespread use in sequence modeling.
+
+The evolution of SSMs led to the creation of Structured State Space Sequence Models (S4), which 
+notably enhance the basic SSM framework. S4 achieves this by applying structured designs to the state matrix $A$ 
+and incorporating an efficient algorithm. The state matrix in S4 is specifically developed and initialized 
+using the High-Order Polynomial Projection Operator (HIPPO), facilitating the construction of deep 
+sequence models that are both rich in capacity and adept at long-range reasoning. Remarkably, S4 has 
+outperformed Transformers in the demanding Long Range Arena Benchmark.
+
+Mamba represents a further advancement in SSMs, especially in discrete data modeling, such as text 
+and genomic sequences. Mamba introduces two significant enhancements. Firstly, it incorporates an 
+input-specific selection mechanism, differing from traditional, invariant SSMs. This mechanism filters 
+information efficiently by customizing SSM parameters based on input data. Secondly, Mamba employs a 
+hardware-optimized algorithm, which scales linearly with sequence length and uses a scanning process for 
+recurrent computation, enhancing speed on contemporary hardware. Mamba's architecture, which combines SSM 
+blocks with linear layers, is notably more streamlined. It has achieved top-tier results in various 
+long-sequence fields, including language and genomics, demonstrating considerable computational efficiency 
+in both training and inference phases.
+
+
+
+
+\section{Self-Supervised Framework}
+
+In this section we describe the framework of our model and describe how we provide the supervisory
+signal during the training of our model. Fundamentally, our method is a form of Structure from Motion (SfM),
+where the monocular camera is moving within a rigid environment to provide multiple views of that scene.
+Our framework is built upon Monodepth2.
+
+Let $I_t \in \mathbb{R}^{H \times W \times 3}$, $t \in \{-1, 0, 1\}$ be a frame in a monocular video sequence captured by a moving camera,
+where $t$ is the frame index. Similarly, let $D_t \in \mathbb{R}^{H \times W}$ denote the depth map corresponding to image $I_t$.
+The camera pose changes from time 0 to time $t$ ($t \in \{-1, 1\}$) is encoded by the $3 \times 3$ rotation matrix $R_t$ and the
+translation vector $t_t$. We obtain the $4 \times 4$ camera transformation matrix thus:
+
+\[
+M_t = 
+\begin{bmatrix}
+R_t & t_t \\
+0 & 1
+\end{bmatrix}.
+\tag{3}
+\]
+
+Our aim is to train two CNN networks to simultaneously estimate the pose of the camera, and the structure
+of the scene, respectively:
+
+\[
+M = \theta_{\text{pose}}(I_t).
+\tag{4}
+\]
+
+\[
+D = \theta_{\text{depth}}(I_t).
+\tag{5}
+\]
+
+Self-supervised depth prediction reformulates the learning task as a novel view-synthesis problem.
+Specifically, during training, we let the coupled network synthesize the photo-consistency appearance of a
+target frame from another viewpoint of the source frame. We treat the depth map as an intermediate variable
+to constrain the network to complete the image synthesis task.
+
+Let $(u, v) \in \mathbb{R}^2$ be the calibrated coordinates of a pixel in image $I_0$. In this case, let the
+origin $(0, 0)$ be the top-left of the image. In the process of imaging, a 3D point $(X, Y, Z) \in \mathbb{R}^3$
+projects onto $(u, v)$ through a perspective projection operator:
+
+\[
+\pi(X, Y, Z) = 
+\left( 
+f_x \frac{X}{Z} + c_x,\,
+f_y \frac{Y}{Z} + c_y
+\right)
+= (u, v),
+\tag{6}
+\]
+
+where $(f_x, f_y, c_x, c_y)$ are the camera intrinsic parameters. Therefore, given a depth map $D(u, v)$,
+a 2D image point $(u, v)$ backprojects to a 3D point $(X, Y, Z)$ through backprojection:
+
+\[
+\pi^{-1}(u, v, D(u,v)) 
+= D(u,v)
+\left(
+\frac{u - c_x}{f_x},\,
+\frac{v - c_y}{f_y},\,
+1
+\right)
+= (X, Y, Z).
+\tag{7}
+\]
+
+Then the corresponding pixels in image $I_t$ can be computed as:
+
+\[
+(u', v') = \pi\!\left( M_t \cdot \pi^{-1}(u, v, D(u, v)) \right)
+= g_{u,v}(I_t \mid D(u, v), M_t).
+\tag{8}
+\]
+
+We project the pixels of an image to form a novel synthetic view (8). However, the projected coordinates
+$(u', v')$ are continuous values. To obtain $I_t(u, v)$ we include a differentiable bilinear sampling
+mechanism, as proposed in spatial transformer networks. We can now linearly interpolate the values
+of the 4-pixel neighbors (top-left, top-right, bottom-left, bottom-right) of $(u', v')$ to give the RGB
+intensities as follows:
+
+\[
+I^t(u,v) = \sum_{w} w^{uv} \, I^t(u', v'),
+\tag{9}
+\]
+
+where $w^{uv}$ is linearly proportional to the spatial proximity between $(u, v)$ and $(u', v')$,
+and $\sum_{w} w^{uv} = 1$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{figures/scan_expand_merge.png}
+    \caption{The scan expanding and scan merging operations in SS2D. 
+    In the SS2D method, input patches follow distinct scanning paths. 
+    Each sequence is independently processed by separate S6 blocks. 
+    The results are merged to create a 2D feature map, which serves as the final output.}
+    \label{fig:ss2d}
+\end{figure}
+
+
+
+\section{MambaDepth}
+
+In self-supervised depth estimation, Monodepth2 and its derivatives, recognized for their 
+symmetric encoder–decoder structure, are predominant. This structure is adept at extracting multi-level 
+image features through conventional methods. However, the design is constrained in its ability to capture 
+long-range dependencies in images, as the convolutional kernels focus on local areas. Each convolutional 
+layer only processes features within its limited receptive field. Although skip connections aid in merging 
+detailed and abstract features, they primarily enhance local feature combination, not the modeling of 
+extensive range dependencies.
+
+MambaDepth, a novel design, integrates the strengths of Monodepth2 and Mamba to 
+comprehensively understand global contexts in self-supervised depth estimation. Figure 3 showcases the 
+structure of MambaDepth, which is distinct in its composition, featuring an embedding layer, encoder, 
+decoder, disparity heads, and straightforward skip connections, marking a departure from the classical 
+designs often found in prior work.
+
+In the initial stage, the embedding layer segments the input image, denoted as $x$ with dimensions 
+$\mathbb{R}^{H \times W \times 3}$, into discrete $4 \times 4$ patches. These patches are then transformed 
+to a predefined dimension $C$ (typically set to 96), resulting in a reshaped image representation, $x'$, with 
+dimensions $\mathbb{R}^{\frac{H}{4} \times \frac{W}{4} \times C}$. $x'$ is normalized using Layer 
+Normalization before its progression into the encoder for the extraction of features. The encoder itself is 
+structured into four phases, incorporating our newly introduced feature fusion step at the conclusion of 
+the first three phases to compact the spatial dimensions and amplify the channel depth, employing a 
+configuration of $[2,2,2,2]$ MD blocks and channel dimensions scaling from $[C, 2C, 4C, 8C]$ through each 
+phase.
+
+Conversely, the decoder reverses this process over its four stages, using our introduced feature 
+decomposition technique at the start of the final three stages to enlarge spatial dimensions and condense 
+the channel count. Here, the arrangement of MD blocks is $[2,2,2,2]$, with channel dimensions inversely 
+scaling from $[8C, 4C, 2C, C]$. The decoder culminates in 4 disparity heads that upscale the feature 
+dimensions by a factor of four through feature decomposition, followed by a projection layer that adjusts 
+the channel count to align with the target of self-supervised depth estimation, which is processed through 
+a convolutional layer and a Sigmoid layer to generate the final depth map.
+
+Skip connections within this architecture are implemented using a simple addition operation, purposely 
+designed to avoid the incorporation of extra parameters, thus maintaining the model's efficiency and 
+simplicity.
+
+
+
+\section{MambaDepth Block}
+
+At the heart of MambaDepth lies the MD (Mamba Depth) module, which is an adaptation from VMamba, 
+as illustrated in Figure 5. This module begins with Layer Normalization of the input, which 
+then bifurcates into two distinct pathways. The initial pathway channels the input through a linear 
+transformation and an activation phase, whereas the second pathway subjects the input to a sequence 
+involving a linear transformation, depthwise separable convolution, and activation, before directing it to 
+the 2D-Selective-Scan (SS2D) component for advanced feature extraction. Following this, the extracted 
+features undergo Layer Normalization, are then merged with the output of the first pathway through 
+element-wise multiplication, and finally are integrated using a linear transformation. This process is 
+augmented with a residual connection, culminating in the output of the MD block. For activation, the 
+SiLU function is consistently utilized throughout this study.
+
+The SS2D mechanism comprises three essential stages: an operation to expand the scan, an S6 block for 
+processing, and a merging operation for the scans. As shown in Figure 4, the expansion phase unfolds the 
+input image in four orientations (diagonally and anti-diagonally) into sequences. These sequences are then 
+refined by the S6 block, a procedure that meticulously scans information from all directions to extract a 
+comprehensive range of features. Following this, the sequences are recombined through a merging operation, 
+ensuring the output image is resized back to the original dimensions. The innovative S6 block, evolving from 
+Mamba and building upon the S4 structure, introduces a selective filter that dynamically adjusts to the 
+input by fine-tuning the parameters of the State Space Model (SSM). This adjustment allows the system to 
+selectively focus on and preserve relevant information, while discarding what is unnecessary.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{figures/mamba_depth_block.png}
+    \caption{The detailed structure of the MD (MambaDepth) Block.}
+    \label{fig:mambablock}
+\end{figure}
+
+
+
+\section{MambaDepth Block}
+
+At the heart of MambaDepth lies the MD (Mamba Depth) module, which is an adaptation from VMamba, 
+as illustrated in Figure 5. This module begins with Layer Normalization of the input, which 
+then bifurcates into two distinct pathways. The initial pathway channels the input through a linear 
+transformation and an activation phase, whereas the second pathway subjects the input to a sequence 
+involving a linear transformation, depthwise separable convolution, and activation, before directing it to 
+the 2D-Selective-Scan (SS2D) component for advanced feature extraction. Following this, the extracted 
+features undergo Layer Normalization, are then merged with the output of the first pathway through 
+element-wise multiplication, and finally are integrated using a linear transformation. This process is 
+augmented with a residual connection, culminating in the output of the MD block. For activation, the 
+SiLU function is consistently utilized throughout this study.
+
+The SS2D mechanism comprises three essential stages: an operation to expand the scan, an S6 block for 
+processing, and a merging operation for the scans. As shown in Figure 4, the expansion phase unfolds the 
+input image in four orientations (diagonally and anti-diagonally) into sequences. These sequences are then 
+refined by the S6 block, a procedure that meticulously scans information from all directions to extract a 
+comprehensive range of features. Following this, the sequences are recombined through a merging operation, 
+ensuring the output image is resized back to the original dimensions. The innovative S6 block, evolving from 
+Mamba and building upon the S4 structure, introduces a selective filter that dynamically adjusts to the 
+input by fine-tuning the parameters of the State Space Model (SSM). This adjustment allows the system to 
+selectively focus on and preserve relevant information, while discarding what is unnecessary.
+
+
+
+\section{Loss Function}
+
+\textbf{Objective functions.}
+In line with the methodologies described in, we adopt the conventional photometric loss
+$p_{\ell}$, which is a combination of $L_1$ and SSIM losses:
+
+\[
+p_{\ell}(I_a, I_b)
+= \frac{\alpha}{2}\big(1 - \text{SSIM}(I_a, I_b)\big)
++ (1 - \alpha)\lVert I_a - I_b \rVert_1.
+\tag{10}
+\]
+
+To ensure proper depth regularization in areas lacking texture, we employ an edge-aware smooth loss,
+applied in the following manner:
+
+\[
+L_s = 
+|\partial_x d_t| e^{-|\partial_x I_t|}
++ 
+|\partial_y d_t| e^{-|\partial_y I_t|}.
+\tag{11}
+\]
+
+\textbf{Masking Strategy.}
+In real-world settings, scenarios featuring stationary cameras and moving objects can disrupt the usual 
+assumptions of a moving camera and static environment, negatively impacting the performance of 
+self-supervised depth estimators. Previous studies have attempted to enhance prediction accuracy by 
+incorporating a motion mask, which addresses moving objects using scene-specific instance segmentation 
+models. However, this approach limits its applicability to new, unencountered scenarios. To maintain 
+scalability, our method eschews the use of a motion mask for handling moving objects. Instead, we adopt 
+the auto-masking strategy outlined in, which filters out static pixels and areas of low texture 
+that appear unchanged between two consecutive frames in a sequence. This binary mask $\mu$ is calculated 
+as per (12), employing the Iverson bracket notation:
+
+\[
+\mu = 
+\big[ \min_{t'}\, p_{\ell}(I_t, I_{t' \rightarrow t}) 
+< 
+\min_{t'}\, p_{\ell}(I_t, I_{t'}) \big].
+\tag{12}
+\]
+
+\textbf{Final Training Loss.}
+We formulate the final loss by combining our per-pixel smooth loss with the masked photometric losses:
+
+\[
+L = \mu L_p + \lambda L_s.
+\tag{13}
+\]
+
+
+
+\textbf{\section{Experements}}
+
+\textbf{KITTI} dataset, known for its stereo image sequences, is widely utilized in 
+self-supervised monocular depth estimation. We employ the Eigen split, comprising about 26{,}000 
+images for training and 697 for testing. Our approach with MambaDepth involves training it from the 
+beginning on KITTI under minimal conditions: it operates solely with auto-masking, without 
+additional stereo pairs or auxiliary data. For testing purposes, we maintain a challenging scenario by 
+using only a single frame as input, in contrast to other methods that might use multiple frames to enhance 
+accuracy.
+
+\textbf{Cityscapes} dataset, noted for its complexity and abundance of moving objects, serves as a 
+testing ground to assess the adaptability of MambaDepth. To this end, we conduct a zero-shot evaluation 
+on Cityscapes, utilizing a model pre-trained on KITTI. It is crucial to highlight that, unlike many 
+competing approaches, we do not employ a motion mask in our evaluation. For data preparation, we follow 
+the same preprocessing procedures outlined in, which are also adopted by other baselines, 
+converting the image sequences into triplets.
+
+\textbf{Make3D}. To assess the capability of MambaDepth to generalize to new, previously unseen 
+images, the model, initially trained on the KITTI dataset, was subjected to a zero-shot evaluation using 
+the Make3D dataset. Furthermore, supplementary visualizations of depth maps are provided.
+
+\textbf{Implementation Details}
+
+We developed our model using the PyTorch framework. It was trained on eight NVIDIA Tesla 
+V100-SXM2 GPUs, with a batch size of 8. We pre-trained the architecture on the ImageNet-1k dataset, 
+subsequently using these pre-trained weights to initialize both the encoder and decoder components of the 
+model. In line with the approach in, we applied color and flip augmentations to the images 
+during training. Both DepthNet and PoseNet were trained using the Adam Optimizer, with 
+$\beta_1$ set at 0.9 and $\beta_2$ at 0.999, DepthNet being also trained concurrently. The learning rate 
+starts at $1\text{e-}4$ and reduces to $1\text{e-}5$ after 15 epochs. We configured the SSIM weight at 
+$\alpha = 0.85$ and the weight for the smooth loss term at $\lambda = 1\text{e-}3$.
+
+
+
+\end{document}

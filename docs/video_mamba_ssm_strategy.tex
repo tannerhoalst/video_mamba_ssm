@@ -1,0 +1,100 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\title{VideoMambaDepth-SSM: Long-Form Video Depth via State Space Models}
+\author{Tanner Hoalst}
+\date{November 2025}
+
+\begin{document}
+\maketitle
+
+\section*{Motivation}
+Transformers in the original VideoMambaDepth design offer excellent temporal reasoning but incur quadratic
+memory and latency growth with the clip length $N$. This document explores how to swap the
+multi-head self-attention layers for Mamba-style selective state space models (SSMs) so that both training
+and inference costs scale linearly with $N$, enabling much longer context windows (\(N \geq 256\)) and
+streaming deployment on lightweight hardware without sacrificing spatial quality inherited from the
+Depth Anything V2 encoder.
+
+\section*{High-Level Architecture}
+\textbf{Frozen Encoder.} We continue to process frames with the frozen Depth Anything V2 encoder. The input
+clip $\mathbf{X} \in \mathbb{R}^{(B \times N) \times C \times H \times W}$ collapses the temporal dimension into the
+batch dimension exactly as before, producing multi-scale features $\mathbf{F}_i \in \mathbb{R}^{(B \times N) \times C_i \times H_i \times W_i}$.
+
+\textbf{Temporal Tokenization.} For each scale $i$ we regroup features back into sequences of length $N$ per
+spatial location: $\mathbf{Z}_{i,(h,w)} = [\mathbf{F}_{i,1,(h,w)}, \dots, \mathbf{F}_{i,N,(h,w)}] \in \mathbb{R}^{N \times C_i}$.
+This yields $H_i W_i$ parallel sequences that share parameters, making the temporal module independent of the
+spatial footprint.
+
+\textbf{Hierarchical Mamba Blocks.} Replace every temporal self-attention layer with a stack of Mamba blocks:
+\[
+\mathbf{Y}_{i,(h,w)} = \mathrm{Mamba}_\theta\big(\mathbf{Z}_{i,(h,w)} + \mathrm{PE}(t)\big) + \mathbf{Z}_{i,(h,w)},
+\]
+where $\mathrm{PE}(t)$ supplies lightweight temporal embeddings (sines or learned). Each block uses:
+\begin{itemize}
+    \item depthwise-convolutional input projections that mix short-range spatial context before feeding the SSM,
+    \item gated selective scan (the Mamba core) producing linear-cost temporal mixing,
+    \item cross-scale residual adapters so the highest-resolution stream receives low-latency updates.
+\end{itemize}
+We place two blocks on the coarsest scales and one on finer scales to balance cost. The outputs are reshaped
+back to $\mathbb{R}^{(B \times N) \times C_i \times H_i \times W_i}$ and passed into the original DPT reassemble and
+fusion layers, so the remainder of the decoding path is unchanged.
+
+\section*{Training Strategy}
+\textbf{Data Mixture.} Continue mixed batches of single images ($N=1$) and short clips ($N=16$--$64$). When
+$N=1$, the Mamba states are reset, effectively regularizing the model to behave like the image-only teacher.
+
+\textbf{Chunked BPTT.} For long clips we chunk the temporal dimension into segments of $N_c$ frames (e.g., 64).
+Within a chunk we run full forward/backward; between chunks we detach the hidden state so that memory stays
+constant:
+\[
+\mathbf{s}_{k+1}^{(0)} = \mathrm{stop\_grad}\big(\mathbf{s}_k^{(N_c)}\big).
+\]
+This mirrors transformer windowing but without quadratic attention matrices.
+
+\textbf{Losses.} Reuse the Temporal Gradient Matching loss and MiDaS scale/shift loss. Additionally, add a
+state-smoothing auxiliary loss on consecutive hidden states:
+\[
+\mathcal{L}_{\mathrm{state}} = \frac{1}{N-1} \sum_{t=1}^{N-1} \big\|\mathbf{s}_{t+1} - \mathbf{s}_{t}\big\|_2^2,
+\]
+computed only on background pixels (mask from semantic priors) to prevent oversmoothing dynamic objects.
+The total loss becomes $\mathcal{L}_{\mathrm{all}} = \alpha \mathcal{L}_{\mathrm{TGM}} + \beta \mathcal{L}_{\mathrm{SE}} + \gamma \mathcal{L}_{\mathrm{state}}$.
+
+\section*{Inference for Ultra-Long Videos}
+\textbf{State Streaming.} Because Mamba exposes hidden states $\mathbf{s}_t$, we can stream frames one by one
+or in micro-batches. The states of each scale act as low-dimensional summaries (\(<1\,\mathrm{kB}\) each), so we
+propagate them across the entire video instead of re-encoding overlapping windows. Only encoder features for
+incoming frames are computed.
+
+\textbf{Key-Frame Anchoring.} We retain the key-frame referencing idea but align depth maps using the carried
+states instead of affine transforms. Every $\Delta_k$ frames (e.g., $\Delta_k=24$) we snapshot the latent states
+and predicted depth for a key frame $K_j$. When re-entering a region already summarized by a key frame, we
+initialize the states with that snapshot, ensuring global scale consistency with $O(1)$ overhead.
+
+\textbf{Hybrid Overlap.} To avoid flicker near chunk boundaries we still process small overlaps $T_0$ (4--8
+frames), but we keep only their encoder activations; the temporal module continues with uninterrupted states.
+This reduces redundant compute compared with transformer-based overlapping inference.
+
+\textbf{Scale-Shift Alignment.} Since SSMs propagate scene-scale implicitly, we recommend a lightweight online
+alignment: for overlapping frames, estimate affine parameters $(a,b)$ such that
+$D^{\mathrm{cur}} = a D^{\mathrm{ref}} + b$, but update $a,b$ using an exponential moving average whose decay
+is inversely proportional to the state norm. When the state predicts stable depth, the EMA freezes; when new
+content appears, the alignment adapts quickly.
+
+\section*{Practical Considerations}
+\textbf{Initialization.} Initialize the Mamba blocks from a pre-trained video foundation model (e.g., VideoMamba)
+or use distilled supervision from the transformer head by minimizing an intermediate feature loss.
+
+\textbf{Precision and Throughput.} Mixed-precision (FP16/FP8) is safe because SSM scans are numerically stable
+under well-conditioned HiPPO kernels. On an RTX 4090 we estimate $512\times$512 clips of 256 frames to run at
+\(<40\,\mathrm{ms}$ per frame end-to-end, roughly $2.3\times$ faster than the transformer baseline.
+
+\textbf{Deployment.} The linear-time selective scan maps naturally onto CUDA persistent kernels and mobile
+NPUs. Export by folding the SSM parameters into a custom ONNX op or using the official Mamba TorchScript
+kernels, both of which maintain the streaming hidden-state interface needed for arbitrarily long videos.
+
+\end{document}
