@@ -18,17 +18,22 @@ memory and latency growth with the clip length $N$. This document explores how t
 multi-head self-attention layers for Mamba-style selective state space models (SSMs) so that both training
 and inference costs scale linearly with $N$, enabling much longer context windows (\(N \geq 256\)) and
 streaming deployment on lightweight hardware without sacrificing spatial quality inherited from the
-Depth Anything V2 encoder.
+Depth Anything V2/V3 encoder.
 
 \section*{High-Level Architecture}
-\textbf{Frozen Encoder.} We continue to process frames with the frozen Depth Anything V2 encoder. The input
-clip $\mathbf{X} \in \mathbb{R}^{(B \times N) \times C \times H \times W}$ collapses the temporal dimension into the
-batch dimension exactly as before, producing multi-scale features $\mathbf{F}_i \in \mathbb{R}^{(B \times N) \times C_i \times H_i \times W_i}$.
+\textbf{Frozen Encoder.} We continue to process frames with the frozen Depth Anything V2 (or V3) encoder. Each
+RGB frame is encoded independently, so the encoder never observes temporal context and only supplies features
+to the downstream temporal module. The input clip $\mathbf{X} \in \mathbb{R}^{(B \times N) \times C \times H \times W}$
+collapses the temporal dimension into the batch dimension exactly as before, producing multi-scale features
+$\mathbf{F}_i \in \mathbb{R}^{(B \times N) \times C_i \times H_i \times W_i}$.
 
 \textbf{Temporal Tokenization.} For each scale $i$ we regroup features back into sequences of length $N$ per
 spatial location: $\mathbf{Z}_{i,(h,w)} = [\mathbf{F}_{i,1,(h,w)}, \dots, \mathbf{F}_{i,N,(h,w)}] \in \mathbb{R}^{N \times C_i}$.
 This yields $H_i W_i$ parallel sequences that share parameters, making the temporal module independent of the
-spatial footprint.
+spatial footprint. Because sequences are formed per pixel, we inject a shallow depthwise $3\times3$ convolution
+before the SSM so that each temporal token already mixes immediate neighbors instead of operating on entirely
+isolated pixels, and the DPT encoder features are already smooth/semantically aligned enough that these
+per-pixel temporal tracks stay stable rather than aliasing between regions.
 
 \textbf{Hierarchical Mamba Blocks.} Replace every temporal self-attention layer with a stack of Mamba blocks:
 \[
@@ -40,11 +45,20 @@ where $\mathrm{PE}(t)$ supplies lightweight temporal embeddings (sines or learne
     \item gated selective scan (the Mamba core) producing linear-cost temporal mixing,
     \item cross-scale residual adapters so the highest-resolution stream receives low-latency updates.
 \end{itemize}
-We place two blocks on the coarsest scales and one on finer scales to balance cost. The outputs are reshaped
+We place two blocks on the coarsest scales and one on finer scales to balance cost: coarse features encode
+global structure and need the extra memory depth, whereas fine scales only refine local details and would
+over-smooth if we stacked the same number of blocks. The outputs are reshaped
 back to $\mathbb{R}^{(B \times N) \times C_i \times H_i \times W_i}$ and passed into the original DPT reassemble and
 fusion layers, so the remainder of the decoding path is unchanged.
 
+\textbf{Encoder Cost.} The frozen Depth Anything encoder still dominates wall-clock compute because every frame
+is processed independently in RGB space. Replacing transformers with Mamba only reduces the temporal mixing
+cost, so expect the runtime savings to come from the linear-time scan while the encoder remains the main
+bottleneck, especially at high spatial resolutions.
+
 \section*{Training Strategy}
+\textbf{Supervision.} We explicitly distill from the Depth Anything V2 teacher (or V3 when available) using the MiDaS-style scale-and-shift (SE) loss, so the SE term always compares student predictions to a teacher depth map rather than attempting self-supervised alignment. This guarantees that SE remains well-posed while letting the Mamba head inherit the teacher's absolute depth scale and use the temporal module only for consistency. The model is therefore trained entirely via teacher distillation from Depth Anything V2/V3 and is not self-supervised.
+
 \textbf{Data Mixture.} Continue mixed batches of single images ($N=1$) and short clips ($N=16$--$64$). When
 $N=1$, the Mamba states are reset, effectively regularizing the model to behave like the image-only teacher.
 
@@ -55,25 +69,31 @@ constant:
 \mathbf{s}_{k+1}^{(0)} = \mathrm{stop\_grad}\big(\mathbf{s}_k^{(N_c)}\big).
 \]
 This mirrors transformer windowing but without quadratic attention matrices.
+The hidden state itself is carried continuously across all frames, but gradients are truncated at the chunk
+boundaries so temporal continuity is preserved while keeping backprop manageable.
 
 \textbf{Losses.} Reuse the Temporal Gradient Matching loss and MiDaS scale/shift loss. Additionally, add a
 state-smoothing auxiliary loss on consecutive hidden states:
 \[
 \mathcal{L}_{\mathrm{state}} = \frac{1}{N-1} \sum_{t=1}^{N-1} \big\|\mathbf{s}_{t+1} - \mathbf{s}_{t}\big\|_2^2,
 \]
-computed only on background pixels (mask from semantic priors) to prevent oversmoothing dynamic objects.
+computed only on background pixels identified with optical-flow magnitude thresholds or motion masks (semantic
+segmentation is unreliable on adult/VR footage) to prevent oversmoothing dynamic objects.
 The total loss becomes $\mathcal{L}_{\mathrm{all}} = \alpha \mathcal{L}_{\mathrm{TGM}} + \beta \mathcal{L}_{\mathrm{SE}} + \gamma \mathcal{L}_{\mathrm{state}}$.
 
 \section*{Inference for Ultra-Long Videos}
 \textbf{State Streaming.} Because Mamba exposes hidden states $\mathbf{s}_t$, we can stream frames one by one
-or in micro-batches. The states of each scale act as low-dimensional summaries (\(<1\,\mathrm{kB}\) each), so we
+or in micro-batches. Its selective scan is inherently causal, so we advance one frame at a time without
+recomputing history. The states of each scale act as low-dimensional summaries (\(<1\,\mathrm{kB}\) each), so we
 propagate them across the entire video instead of re-encoding overlapping windows. Only encoder features for
 incoming frames are computed.
 
 \textbf{Key-Frame Anchoring.} We retain the key-frame referencing idea but align depth maps using the carried
 states instead of affine transforms. Every $\Delta_k$ frames (e.g., $\Delta_k=24$) we snapshot the latent states
 and predicted depth for a key frame $K_j$. When re-entering a region already summarized by a key frame, we
-initialize the states with that snapshot, ensuring global scale consistency with $O(1)$ overhead.
+initialize the states with that snapshot, ensuring global scale consistency with $O(1)$ overhead. We detect
+such re-entry events using cosine similarity between global average-pooled encoder features of the current
+frame and the stored key-frame descriptors.
 
 \textbf{Hybrid Overlap.} To avoid flicker near chunk boundaries we still process small overlaps $T_0$ (4--8
 frames), but we keep only their encoder activations; the temporal module continues with uninterrupted states.
@@ -82,19 +102,55 @@ This reduces redundant compute compared with transformer-based overlapping infer
 \textbf{Scale-Shift Alignment.} Since SSMs propagate scene-scale implicitly, we recommend a lightweight online
 alignment: for overlapping frames, estimate affine parameters $(a,b)$ such that
 $D^{\mathrm{cur}} = a D^{\mathrm{ref}} + b$, but update $a,b$ using an exponential moving average whose decay
-is inversely proportional to the state norm. When the state predicts stable depth, the EMA freezes; when new
-content appears, the alignment adapts quickly.
+is inversely proportional to the state norm. Skip EMA updates entirely when the current state norm changes by
+more than a chosen threshold (e.g., \(\|\mathbf{s}_{t}-\mathbf{s}_{t-1}\|_2 / \|\mathbf{s}_{t-1}\|_2 > 0.25\)) so abrupt
+state jumps from hard cuts do not inject ``depth explosions.'' When the state predicts stable depth, the EMA
+freezes; when new content appears, the alignment adapts quickly.
+
+\textbf{Long-Horizon Stability.} For ultra-long streams (\(N > 2000\)) the SSM hidden states slowly drift.
+Periodically re-normalize the state or hard-reset it to the latest key-frame snapshot every few hundred frames
+to keep magnitudes bounded while preserving context.
+
+\textbf{Causal vs Bidirectional.} The deployment path uses strictly causal Mamba scans so streaming latency is
+bounded, but offline batches can optionally run a reversed pass and fuse the forward/backward depth maps à la
+Bi-Mamba for slightly higher quality. Fusion can be a simple weighted average or a confidence-based blending
+scheme over the per-pixel photometric residuals.
 
 \section*{Practical Considerations}
 \textbf{Initialization.} Initialize the Mamba blocks from a pre-trained video foundation model (e.g., VideoMamba)
-or use distilled supervision from the transformer head by minimizing an intermediate feature loss.
+or use distilled supervision from the transformer head by minimizing an intermediate feature loss. If official
+VideoMamba checkpoints exist, directly load the temporal SSM layers from them before depth-specific finetuning.
 
 \textbf{Precision and Throughput.} Mixed-precision (FP16/FP8) is safe because SSM scans are numerically stable
 under well-conditioned HiPPO kernels. On an RTX 4090 we estimate $512\times$512 clips of 256 frames to run at
-\(<40\,\mathrm{ms}$ per frame end-to-end, roughly $2.3\times$ faster than the transformer baseline.
+\(<40\,\mathrm{ms}\) per frame end-to-end, roughly $2.3\times$ faster than the transformer baseline.
 
 \textbf{Deployment.} The linear-time selective scan maps naturally onto CUDA persistent kernels and mobile
 NPUs. Export by folding the SSM parameters into a custom ONNX op or using the official Mamba TorchScript
 kernels, both of which maintain the streaming hidden-state interface needed for arbitrarily long videos.
+
+\textbf{Resolution Independence.} Per-pixel temporal SSMs share parameters across spatial locations, so their
+memory and compute scales only with the clip length $N$; only the encoder cost grows with $H \times W$. This
+makes the approach resolution-agnostic for the temporal module, which is crucial when targeting both desktop
+and headset displays, and it remains one of the clearest selling points of per-pixel Mamba scans.
+
+\section*{Ablation Expectations}
+\textbf{More Mamba Blocks.} Increasing the number of temporal blocks per scale yields smoother long-range depth
+but with diminishing returns once two blocks per coarse scale are present.\newline
+\textbf{Too Many Blocks.} Adding extra blocks to the fine scales often over-smooths local structure, softening
+edges and hurting high-frequency accuracy.\newline
+\textbf{Removing Key-Frame Anchoring.} Disabling the key-frame reset increases accumulated scale drift and slows
+recovery after occlusions, so we expect noticeably higher depth variance on long scenes.
+
+\section*{Theoretical Complexity}
+Transformer temporal attention scales as $O(N^2 C + N C H W)$ due to quadratic token mixing plus encoder cost.\newline
+Selective SSM (Mamba) temporal mixing is $O(N C + N C H W)$, keeping only linear scans plus the unchanged
+encoder passes.\newline
+Therefore, the temporal head remains scalable out to 256--2048 frames while the encoder cost stays constant.
+
+\section*{Limitations}
+\textbf{State Drift.} Even with re-normalization, hidden states still require periodic resets on very long streams.\newline
+\textbf{Encoder Cost.} The frozen Depth Anything encoder dominates runtime, so total throughput is bounded by its per-frame compute.\newline
+\textbf{Teacher Bias.} Distillation inherits any systematic errors from Depth Anything V2/V3, so improving the teacher is the main path to better absolute accuracy.
 
 \end{document}
