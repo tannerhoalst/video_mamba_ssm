@@ -1,0 +1,25 @@
+einops>=0.7.0
+gradio
+h5py>=3.10.0
+huggingface-hub>=0.22.0
+imageio
+matplotlib
+numpy>=2.0.0
+opencv-python
+pandas
+pillow-simd>=10.0.0
+protobuf>=4.25.3
+scipy
+tables
+tabulate
+termcolor
+timm
+tqdm
+trimesh
+triton>=2.4.0
+--index-url https://download.pytorch.org/whl/cu130
+torch==2.9.1+cu130
+torchvision==0.24.1+cu130
+torchaudio==2.9.1+cu130
+wandb
+xformers>=0.0.26
