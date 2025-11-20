@@ -1,13 +1,7 @@
-codex --model=gpt-5.1-codex \
+codex --model=gpt-5.1-codex-max \
   --dangerously-bypass-approvals-and-sandbox \
   --enable web_search_request \
   -c model_reasoning_effort="high"
-
-
-
-uv pip install --upgrade --force-reinstall \
-    torch==2.9.1+cu130 torchvision==0.24.1+cu130 torchaudio==2.9.1+cu130 \
-    --index-url https://download.pytorch.org/whl/cu130
 
 
   Conceptually, the idea is sound: replacing quadratic temporal
@@ -23,12 +17,40 @@ uv pip install --upgrade --force-reinstall \
   outlines the right mitigation strategies for known pitfalls.
 
 
+
+
+sudo apt-get update
+sudo apt-get install -y libjpeg-dev zlib1g-dev libopenjp2-7-dev libtiff-dev libwebp-dev liblcms2-dev
+sudo apt-get install -y build-essential cmake ninja-build
+
 python3 -m venv .venv
 source .venv/bin/activate
-CC="cc -mavx2" uv pip install -r UniDepth/requirements.txt --upgrade --force-reinstall
+CC="cc -mavx2" uv pip install --extra-index-url https://download.pytorch.org/whl/cu130 -r UniDepth/requirements.txt --upgrade --force-reinstall
+uv pip install -v --no-build-isolation -U git+https://github.com/facebookresearch/xformers.git@main#egg=xformers
+uv pip install -e UniDepth
+
+cd UniDepth/unidepth/ops/knn
+TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0+PTX" python setup.py build install
+cd ../extract_patches
+TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0+PTX" python setup.py build install
+cd ../../../..
 
 python -m unidepth.models.unidepthv2.inference \
-  --image /path/to/frame.png \
+  --image /home/thoalst/Pictures/Screenshots/savannah_3.png \
   --model-id lpiccinelli/unidepth-v2-vits14 \
-  --save-depth outputs/depth.npy \
-  --save-points outputs/points.npy
+  --save-depth /mnt/vrdata/depth_maps/unidepth/savannah_3.npy
+
+
+python visualize_depth.py /mnt/vrdata/depth_maps/unidepth/savannah_3.npy
+
+
+python benchmark_unidepth_inprocess.py --image /home/thoalst/Pictures/Screenshots/savannah_2.png --runs 60 --warmup 3
+
+  - defaults: 5 warm-up runs, 60 timed runs, image /home/thoalst/Pictures/Screenshots/savannah.png, model lpiccinelli/unidepth-v2-vits14, device auto (CUDA if available).
+Common options:
+  - --runs 100 to change the timed loop count.
+  - --warmup 2 to adjust warm-ups.
+  - --image /path/to/img.png to test another image.
+  - --device cpu to force CPU.
+  - --save-depth /mnt/vrdata/depth_maps/unidepth/savannah_loop.npy to save the depth from the last timed run only (avoids I/O in the loop).
+  - --verbose to print per-run timings.

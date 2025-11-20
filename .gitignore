@@ -1,1 +1,6 @@
 Depth-Anything-V2/checkpoints
+
+.venv/
+
+.vscode/
+

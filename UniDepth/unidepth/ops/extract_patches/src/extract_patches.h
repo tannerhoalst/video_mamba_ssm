@@ -17,7 +17,7 @@ torch::Tensor extract_patches_forward(
     int patch_height,
     int patch_width)
 {
-    if (images.type().is_cuda())
+    if (images.is_cuda())
     {
 #ifdef WITH_CUDA
         return extract_patches_cuda_forward(images, coords, patch_height, patch_width);
@@ -34,7 +34,7 @@ std::vector<at::Tensor> extract_patches_backward(
     int H,
     int W)
 {
-    if (grad_patches.type().is_cuda())
+    if (grad_patches.is_cuda())
     {
 #ifdef WITH_CUDA
         return extract_patches_cuda_backward(grad_patches, coords, H, W);
