@@ -5,6 +5,11 @@ codex --model=gpt-5.1-codex \
 
 
 
+uv pip install --upgrade --force-reinstall \
+    torch==2.9.1+cu130 torchvision==0.24.1+cu130 torchaudio==2.9.1+cu130 \
+    --index-url https://download.pytorch.org/whl/cu130
+
+
   Conceptually, the idea is sound: replacing quadratic temporal
   attention with linear-cost SSMs, keeping the heavy Depth Anything
   encoder frozen, and layering in practical safeguards (motion-
@@ -16,3 +21,14 @@ codex --model=gpt-5.1-codex \
   bottleneck. You’ll still need to implement and benchmark it to prove
   it “works,” but as a design blueprint, it’s logically consistent and
   outlines the right mitigation strategies for known pitfalls.
+
+
+python3 -m venv .venv
+source .venv/bin/activate
+CC="cc -mavx2" uv pip install -r UniDepth/requirements.txt --upgrade --force-reinstall
+
+python -m unidepth.models.unidepthv2.inference \
+  --image /path/to/frame.png \
+  --model-id lpiccinelli/unidepth-v2-vits14 \
+  --save-depth outputs/depth.npy \
+  --save-points outputs/points.npy
