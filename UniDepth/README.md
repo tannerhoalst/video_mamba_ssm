@@ -1,5 +1,4 @@
 [![arXiv](https://img.shields.io/badge/UniDepthV2%20arXiv-2502.20110-blue?logo=arxiv&color=%23B31B1B)](https://arxiv.org/abs/2502.20110)
-[![arXiv](https://img.shields.io/badge/UniDepthV1%20arXiv-2403.18913-blue?logo=arxiv-v1&color=%23B31B1B)](https://arxiv.org/abs/2403.18913)
 [![ProjectPage](https://img.shields.io/badge/Project_Page-UniDepth-blue)](https://lpiccinelli-eth.github.io/pub/unidepth/)
 
 # UniDepthV2: Universal Monocular Metric Depth Estimation Made Simpler
@@ -17,28 +16,12 @@
 > *Paper at [arXiv 2502.20110](https://arxiv.org/abs/2502.20110.pdf)*  
 
 
-# UniDepth: Universal Monocular Metric Depth Estimation
-
-[![KITTI Benchmark](https://img.shields.io/badge/KITTI%20Benchmark-1st%20(at%20submission%20time)-orange)](https://www.cvlibs.net/datasets/kitti/eval_depth.php?benchmark=depth_prediction)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/unidepth-universal-monocular-metric-depth/monocular-depth-estimation-on-nyu-depth-v2)](https://paperswithcode.com/sota/monocular-depth-estimation-on-nyu-depth-v2?p=unidepth-universal-monocular-metric-depth)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/unidepth-universal-monocular-metric-depth/monocular-depth-estimation-on-kitti-eigen)](https://paperswithcode.com/sota/monocular-depth-estimation-on-kitti-eigen?p=unidepth-universal-monocular-metric-depth)
-
-![](assets/docs/unidepth-banner.png)
-
-> [**UniDepth: Universal Monocular Metric Depth Estimation**](https://arxiv.org/abs/2403.18913),  
-> Luigi Piccinelli, Yung-Hsu Yang, Christos Sakaridis, Mattia Segu, Siyuan Li, Luc Van Gool, Fisher Yu,  
-> CVPR 2024,  
-> *Paper at [arXiv 2403.18913](https://arxiv.org/pdf/2403.18913.pdf)*  
-
-
-
 ## News and ToDo
 
 - [ ] HuggingFace/Gradio demo.
 - [x] `28.02.2025`: Release UniDepthV2.
 - [x] `15.10.2024`: Release training code.
 - [x] `02.04.2024`: Release UniDepth as python package.
-- [x] `01.04.2024`: Inference code and V1 models are released.
 - [x] `26.02.2024`: UniDepth is accepted at CVPR 2024! (Highlight :star:)
 
 
@@ -104,15 +87,7 @@ If you encounter `Segmentation Fault` after running the demo, you may need to un
 
 ## Get Started
 
-After installing the dependencies, you can load the pre-trained models easily from [Hugging Face](https://huggingface.co/models?other=UniDepth) as follows:
-
-```python
-from unidepth.models import UniDepthV1
-
-model = UniDepthV1.from_pretrained("lpiccinelli/unidepth-v1-vitl14") # or "lpiccinelli/unidepth-v1-cnvnxtl" for the ConvNext backbone
-```
-
-Then you can generate the metric depth estimation and intrinsics prediction directly from RGB image only as follows:
+After installing the dependencies, you can load the pre-trained UniDepthV2 models easily from [Hugging Face](https://huggingface.co/models?other=UniDepth) as follows:
 
 ```python
 import numpy as np
@@ -178,16 +153,6 @@ The available models are the following:
         <th>Name</th>
     </tr>
     <tr>
-        <td rowspan="2"><b>UnidepthV1</b></td>
-        <td>ConvNext-L</td>
-        <td><a href="https://huggingface.co/lpiccinelli/unidepth-v1-cnvnxtl">unidepth-v1-cnvnxtl</a></td>
-    </tr>
-    <tr>
-        <td>ViT-L</td>
-        <td><a href="https://huggingface.co/lpiccinelli/unidepth-v1-vitl14">unidepth-v1-vitl14</a></td>
-    </tr>
-    <hr style="border: 2px solid black;">
-    <tr>
         <td rowspan="3"><b>UnidepthV2</b></td>
         <td>ViT-S</td>
         <td><a href="https://huggingface.co/lpiccinelli/unidepth-v2-vits14">unidepth-v2-vits14</a></td>
@@ -203,12 +168,11 @@ The available models are the following:
 </table>
 
 Please visit [Hugging Face](https://huggingface.co/lpiccinelli) or click on the links above to access the repo models with weights.
-You can load UniDepth as the following, with `name` variable matching the table above:
+You can load UniDepthV2 as the following, with `name` variable matching the table above:
 
 ```python
-from unidepth.models import UniDepthV1, UniDepthV2
+from unidepth.models import UniDepthV2
 
-model_v1 = UniDepthV1.from_pretrained(f"lpiccinelli/{name}")
 model_v2 = UniDepthV2.from_pretrained(f"lpiccinelli/{name}")
 ```
 
@@ -235,8 +199,6 @@ To summarize the main differences are:
 - ONNX support.
 - New cameras support (see `camera.py`).
 
-UnidepthV2old is actually V1 version updated to compensate for wave artifacts due to wrong LiDAR accumulation.
-
 ## Training
 
 Please [visit the training README](scripts/README.md) for more information.
@@ -245,7 +207,7 @@ Please [visit the training README](scripts/README.md) for more information.
 ## Results
 
 ### Metric Depth Estimation
-The performance reported is for UniDepthV1 model and the metrics is d1 (higher is better) on zero-shot evaluation. The common split between SUN-RGBD and NYUv2 is removed from SUN-RGBD validation set for evaluation. 
+The performance reported is for UniDepthV2 models and the metrics is d1 (higher is better) on zero-shot evaluation. The common split between SUN-RGBD and NYUv2 is removed from SUN-RGBD validation set for evaluation. 
 
 | Model | NYUv2 | SUN-RGBD | ETH3D | Diode (In) | IBims-1 | KITTI | Nuscenes | DDAD | 
 | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
@@ -254,7 +216,6 @@ The performance reported is for UniDepthV1 model and the metrics is d1 (higher i
 | Metric3D | 92.6 | 15.4 | 45.6 | 39.2 | 79.7 | 97.5 | 72.3 | - |
 | Metric3Dv2 | 98.9 | 81.2 | 90.0 | - | 68.4 | 98.5 | 84.1 | - |
 | DepthPro | - | 83.1 | 39.7 | - | 82.3 | - | 56.6 | 29.9 |
-| UniDepthV1 | 98.4 | 94.3 | 18.5 | 77.1 | 15.7 | 98.6 | 84.6 | 85.8 |
 | UniDepthV2 | 98.8 | 96.4 | 85.2 | - | 94.5 | 98.9 | 87.0 | 88.2 |
 
 

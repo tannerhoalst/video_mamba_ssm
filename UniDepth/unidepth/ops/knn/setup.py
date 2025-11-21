@@ -31,7 +31,8 @@ def get_extensions():
     else:
         raise NotImplementedError("Cuda is not available")
 
-    sources = list(set([os.path.join(extensions_dir, s) for s in sources]))
+    # make sources relative to setup.py dir to keep setuptools happy
+    sources = [os.path.relpath(s, this_dir) for s in set(sources)]
     include_dirs = [extensions_dir]
     ext_modules = [
         extension(

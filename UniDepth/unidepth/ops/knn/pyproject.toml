@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "KNN"
+version = "0.1.0"
+description = "CUDA KNN op for UniDepth"
+requires-python = ">=3.8"
+authors = [{ name = "Luigi Piccinelli" }]

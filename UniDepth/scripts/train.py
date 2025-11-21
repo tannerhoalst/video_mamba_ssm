@@ -25,7 +25,7 @@ from tqdm import tqdm
 import unidepth.datasets as datasets
 from unidepth.datasets import (ConcatDataset, DistributedSamplerNoDuplicate,
                                collate_fn, get_weights)
-from unidepth.models import UniDepthV1, UniDepthV2
+from unidepth.models import UniDepthV2
 from unidepth.ops.scheduler import CosineScheduler
 from unidepth.utils.distributed import (barrier, create_local_process_group,
                                         is_main_process,
@@ -107,8 +107,14 @@ def main_worker(config: Dict[str, Any], args: argparse.Namespace):
     ##############################
     ########### MODEL ############
     ##############################
-    # Build model
-    model = eval(config["model"]["name"])(config).to(device)
+    # Build model (only V2 available; V1/V2old removed)
+    model_registry = {
+        "UniDepthV2": UniDepthV2,
+    }
+    model_name = config["model"]["name"]
+    if model_name not in model_registry:
+        raise ValueError(f"Unsupported model '{model_name}'. Available: {list(model_registry.keys())}")
+    model = model_registry[model_name](config).to(device)
     model.eval()
     print(f"MODEL: {model.__class__.__name__} at {model.device}")
     torch.cuda.empty_cache()

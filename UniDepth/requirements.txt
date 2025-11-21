@@ -6,6 +6,7 @@ imageio
 matplotlib
 numpy>=2.0.0
 opencv-python
+packaging>=24.2
 pandas
 pillow-simd==9.5.0.post2
 protobuf>=4.25.3

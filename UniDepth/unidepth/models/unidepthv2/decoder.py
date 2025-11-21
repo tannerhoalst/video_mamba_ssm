@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-from timm.models.layers import trunc_normal_
+from timm.layers import trunc_normal_
 
 from unidepth.layers import (MLP, AttentionBlock, AttentionLayer,
                              PositionEmbeddingSine, ResUpsampleBil)

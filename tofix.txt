@@ -1,3 +1,19 @@
+when i run these commands: 
+
+python3 -m venv .venv
+source .venv/bin/activate
+CC="cc -mavx2" uv pip install --extra-index-url https://download.pytorch.org/whl/cu130 -r UniDepth/requirements.txt --upgrade --force-reinstall
+uv pip install -v --no-build-isolation -U git+https://github.com/facebookresearch/xformers.git@main#egg=xformers
+uv pip install -e UniDepth
+
+cd UniDepth/unidepth/ops/knn
+TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0+PTX" python setup.py build install
+cd ../extract_patches
+TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0+PTX" python setup.py build install
+cd ../../../..
+
+i get this:
+
 (.venv) thoalst@computer:/mnt/vrdata/video_mamba_depth/UniDepth/unidepth/ops/knn$ TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0+PTX" python setup.py build install
 running build
 running build_py
@@ -99,3 +115,20 @@ writing manifest file 'RandomPatchExtraction.egg-info/SOURCES.txt'
 Copying RandomPatchExtraction.egg-info to /mnt/vrdata/video_mamba_depth/.venv/lib/python3.12/site-packages/RandomPatchExtraction-0.1-py3.12.egg-info
 running install_scripts
 (.venv) thoalst@computer:/mnt/vrdata/video_mamba_depth/UniDepth/unidepth/ops/extract_patches$ 
+
+
+
+
+can you help me fix these errors that im getting: 
+
+
+        ********************************************************************************
+        Please avoid running ``setup.py`` directly.
+        Instead, use pypa/build, pypa/installer or other
+        standards-based tools.
+
+        This deprecation is overdue, please update your project and remove deprecated
+        calls to avoid build errors in the future.
+
+        See https://blog.ganssle.io/articles/2021/10/setup-py-deprecated.html for details.
+        ********************************************************************************
