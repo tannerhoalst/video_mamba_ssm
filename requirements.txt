@@ -4,6 +4,7 @@ h5py>=3.10.0
 huggingface-hub>=0.22.0
 imageio
 matplotlib
+av>=10.0.0
 numpy>=2.0.0
 opencv-python
 packaging>=24.2
