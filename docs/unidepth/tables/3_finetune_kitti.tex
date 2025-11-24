@@ -1,0 +1,24 @@
+\begin{table}[t]
+    \centering
+    \caption{\textbf{Comparison on KITTI Eigen-split validation set.} All models are trained on KITTI Eigen-split training and tested on the corresponding validation split. The first 4 are trained only on KITTI. The last 4 are fine-tuned on KITTI.}
+    \vspace{-1em}
+    \label{tab:results:kitti_ft}
+    \resizebox{\columnwidth}{!}{
+    \begin{tabular}{l|ccc|ccc}
+        \toprule
+        \multirow{2}{*}{\textbf{Method}} & $\mathrm{\delta}_{1}$ & $\mathrm{\delta}_{2}$ & $\mathrm{\delta}_{3}$ & $\mathrm{A.Rel}$ & $\mathrm{RMS}$ & $\mathrm{RMS}_{\log}$\\
+         & \multicolumn{3}{c|}{\textit{Higher is better}} & \multicolumn{3}{c}{\textit{Lower is better}}\\
+        \toprule
+        BTS~\cite{Lee2019bts} & $96.2$ & $99.4$ & $99.8$ & $5.63$ & $2.43$ & $0.089$\\
+        AdaBins~\cite{Bhat2020adabins} & $96.3$ & $99.5$ & $99.8$ & $5.85$ & $2.38$ & $0.089$\\
+        NeWCRF~\cite{Yuan2022newcrf} & $97.5$ & $\scnd{99.7}$ & $\scnd{99.9}$ & $5.20$ & $2.07$ & $0.078$\\
+        iDisc~\cite{piccinelli2023idisc} & $97.5$ & $\scnd{99.7}$ & $\scnd{99.9}$ &$5.09$ & $2.07$ & $0.077$\\
+        ZoeDepth~\cite{bhat2023zoedepth} & $96.5$ & $99.1$ & $99.4$ & $5.76$ & $2.39$ & $0.089$ \\
+        Metric3Dv2~\cite{yin2023metric3d} & $\scnd{98.5}$ & $\best{99.8}$ & $\best{100}$ & $\scnd{4.40}$ & $1.99$ & $\scnd{0.064}$\\
+        DepthAnythingv2~\cite{yang2024da2} & $98.3$ & $\best{99.8}$ & $\best{100}$ & $4.50$ & $\scnd{1.86}$ & $0.067$ \\
+        \midrule
+        \ourmodel & $\best{98.9}$ & $\best{99.8}$ & $\scnd{99.9}$ & $\best{3.73}$ & $\best{1.71}$ & $\best{0.061}$ \\ %263000
+        \bottomrule
+    \end{tabular}}
+    \vspace{-1em}
+\end{table}

@@ -1,0 +1,26 @@
+\begin{table*}[t]
+    \centering
+    \caption{\textbf{Results for Outdoor Domains.} All methods are tested in a zero-shot fashion. Missing values (\textcolor{gray}{-}) indicate the model's inability to produce the respective output. \dag: Requires ground-truth (GT) camera for 3D reconstruction. \ddag: Requires GT camera for 2D depth map inference.}
+    \label{tab:results:outdoor}
+    \vspace{-1em}
+    \resizebox{\linewidth}{!}{%
+    \begin{tabular}{l|ccc|ccc|ccc|ccc}
+    \toprule
+    \multirow{2}{*}{\textbf{Method}}  & \multicolumn{3}{c|}{ETH3D} & \multicolumn{3}{c|}{Sintel} & \multicolumn{3}{c|}{DDAD} & \multicolumn{3}{c}{NuScenes} \\
+     & $\mathrm{\delta_1}\uparrow$ & $\mathrm{F_A}\uparrow$ & $\mathrm{\rho_A}\uparrow$ & $\mathrm{\delta_1}\uparrow$ & $\mathrm{F_A}\uparrow$ & $\mathrm{\rho_A}\uparrow$ & $\mathrm{\delta_1}\uparrow$ & $\mathrm{F_A}\uparrow$ & $\mathrm{\rho_A}\uparrow$ & $\mathrm{\delta_1}\uparrow$ & $\mathrm{F_A}\uparrow$ & $\mathrm{\rho_A}\uparrow$ \\
+    \midrule
+    Metric3D\textsuperscript{\dag \ddag}~\cite{yin2023metric3d} & $19.7$ & \textcolor{gray}{-} & \textcolor{gray}{-} & $1.4$ & \textcolor{gray}{-} & \textcolor{gray}{-} & $81.9$ & \textcolor{gray}{-} & \textcolor{gray}{-} & $75.4$ & \textcolor{gray}{-} & \textcolor{gray}{-} \\
+    Metric3Dv2\textsuperscript{\dag \ddag}~\cite{hu2024metric3dv2} & $\best{90.0}$ & \textcolor{gray}{-} & \textcolor{gray}{-} & $\best{34.5}$ & \textcolor{gray}{-} & \textcolor{gray}{-} & $\scnd{87.6}$ & \textcolor{gray}{-} & \textcolor{gray}{-} & $84.1$ & \textcolor{gray}{-} & \textcolor{gray}{-} \\
+    ZoeDepth\textsuperscript{\dag}~\cite{bhat2023zoedepth} & $33.8$ & \textcolor{gray}{-} & \textcolor{gray}{-} & $5.6$ & \textcolor{gray}{-} & \textcolor{gray}{-} & $27.9$ & \textcolor{gray}{-} & \textcolor{gray}{-} & $33.8$ & \textcolor{gray}{-} & \textcolor{gray}{-} \\
+    UniDepth~\cite{piccinelli2024unidepth} & $18.5$ & $27.6$ & $42.6$ & $13.2$ & $40.2$ & $65.6$ & $85.8$ & $\scnd{72.8}$ & $\best{98.1}$ & $84.6$ & $\scnd{64.4}$ & $\best{97.7}$ \\
+    MASt3R~\cite{leroy2024master} & $21.4$ & $28.4$ & $\scnd{92.2}$ & $17.2$ & $41.5$ & $72.2$ & $4.3$ & $22.1$ & $74.6$ & $2.7$ & $13.6$ & $78.3$ \\
+    DepthPro~\cite{bochkovskii2024depthpro} & $39.7$ & $41.2$ & $77.4$ & $26.2$ & $49.7$ & $75.2$ & $29.9$ & $42.1$ & $83.0$ & $56.6$ & $46.5$ & $79.1$ \\
+    \midrule
+    \ourmodel-Small & $64.6$ & $44.3$ & $78.4$ & $14.6$ & $37.1$ & $73.5$ & $83.3$ & $68.5$ & $94.7$ & $82.1$ & $59.7$ & $96.2$ \\
+    \ourmodel-Base & $75.4$ & $\scnd{53.5}$ & $91.4$ & $31.9$ & $\best{51.8}$ & $\scnd{75.9}$ & $86.8$ & $71.4$ & $96.1$ & $\scnd{85.3}$ & $63.6$ & $96.6$ \\
+    \ourmodel-Large & $\scnd{85.2}$ & $\best{59.3}$ & $\best{92.6}$ & $\scnd{34.4}$ & $\scnd{51.4}$ & $\best{76.3}$ & $\best{88.2}$ & $\best{73.3}$ & $\scnd{96.7}$ & $\best{87.0}$ & $\best{66.7}$ & $\scnd{97.2}$ \\
+    \bottomrule
+    \end{tabular}%
+    }
+    \vspace{-1em}
+\end{table*}

@@ -1,0 +1,76 @@
+\clearpage
+%\title{Supplementary Material for \\ ``Video Depth Anything: Consistent Depth Estimation for Super-Long Videos''}
+\maketitlesupplementary
+%\section{Appendix}
+%\label{sec:appendix}
+% \setcounter{page}{1}
+\setcounter{section}{0}
+% \maketitlesupplementary
+% \twocolumn[\maketitlesupplementary\vspace{0em}\input{figures/short_show_sup}\bigbreak]
+
+
+\section{More Qualitative Results}
+
+We present more qualitative comparisons among different approaches for static images and evaluation videos.
+
+\paragraph{In-the-wild image results.} Static image depth estimation results are shown in Fig. \ref{fig:single_frame_show_sup}. DepthCrafter~\cite{hu2024depthcrafter} and Depth Any Video~\cite{depthanyvideo} exhibit poor performance on oil paintings. DepthCrafter~\cite{hu2024depthcrafter} also struggles with transparent objects such as glass and water. Compared with these methods, our model demonstrates superior depth estimation results in complex scenarios. Moreover, our model shows depth estimation results for static images that are comparable to those of Depth-Anything-V2~\cite{depth_anything_v2}, demonstrating that we have successfully transformed Depth-Anything-V2 into a video depth model without compromising its spatial accuracy.
+\input{figures/single_frame_show_sup}
+
+\paragraph{Evaluation video results.} We showcase five video visualization results from the evaluation datasets Scannet~\cite{dai2017scannet} and Bonn~\cite{palazzolo2019iros} in Fig. \ref{fig:long_show_sup}. For enhanced visualization, all predicted video depths are aligned to the ground truth video depths using the same method as in the evaluation. DepthCrafter~\cite{hu2024depthcrafter} exhibits depth drift in long videos, as indicated by the blue boxes. Moreover, our model demonstrates superior depth accuracy compared to DepthCrafter~\cite{hu2024depthcrafter}, as highlighted in the red boxes.
+\input{figures/long_show_sup}
+
+
+% \section{More Experimental Results}
+% \paragraph{Short video quantitative~\cite{hu2024depthcrafter} results.}
+\section{Short video depth quantitative results} We compare our model with DepthCrafter~\cite{hu2024depthcrafter} and Depth Any Video~\cite{depthanyvideo} on the KITTI~\cite{geiger2013vision}, Bonn~\cite{palazzolo2019iros}, and Scannet~\cite{dai2017scannet} datasets, with frame lengths of 110, 110, and 90, respectively, corresponding to the settings in~\cite{hu2024depthcrafter}. As shown in Tab.~\ref{tab::short_video_benchmark}, our model demonstrates a significant advantage of approximately 7\% over both DepthCrafter~\cite{hu2024depthcrafter} and Depth Any Video~\cite{depthanyvideo} on the Scannet dataset~\cite{dai2017scannet}. On the KITTI dataset~\cite{geiger2013vision}, our model significantly outperforms DepthCrafter~\cite{hu2024depthcrafter} by about 7\%. Additionally, our model achieves comparable results on Bonn~\cite{palazzolo2019iros} and KITTI~\cite{geiger2013vision} compared to Depth Any Video~\cite{depthanyvideo}. It is worth noting that the parameters of our model and the video depth data used for training are significantly smaller than those of DepthCrafter~\cite{hu2024depthcrafter} and Depth Any Video~\cite{depthanyvideo}, demonstrating the effectiveness and efficiency of our method.
+
+\input{tables/supp/short_video_benchmark}
+
+\section{Limitations and future work}
+Our model is trained primarily on publicly available video depth datasets, which may limit its capabilities due to the data quantity. We believe that with more data, the model's performance can be further improved, and the backbone network can be unlocked for fine-tuning. Additionally, although our model is significantly more computationally efficient than the baselines, it still faces challenges in handling streaming videos, which we leave as future work.
+
+\section{More Details of Pipeline}
+\paragraph{Spatiotemporal head details.} 
+
+Among the four temporal layers, two are inserted after the Reassemble layers at the two smallest resolutions, and the other two are inserted before the last two Fusion layers.
+
+\input{figures/head_detail}
+
+The shape of the feature is transformed into $(B \times H_f \times W_f) \times N \times C$ before each temporal layer and is transformed back to $(B \times N) \times C \times H_f \times W_f$ after each temporal layer. Here, $B$ denotes the batch size, $N$ represents the number of frames in the video clip, $H_f$ and $W_f$ are the height and width of the feature, respectively, and $C$ represents the number of channels in the feature, as shown in Fig. \ref{fig:head_detail}
+
+\paragraph{Image distillation details.} We follow the approach in~\cite{depth_anything_v2} and use a teacher model that comprises a ViT-giant encoder and is trained on synthetic datasets. The loss function used for distillation is identical to the spatial loss employed for video depth data.
+
+\paragraph{Training dataset details.} For video training, we utilize four synthetic datasets with precise depth annotations: TartanAir~\cite{wang2020tartanair}, VKITTI~\cite{cabon2020virtual}, PointOdyssey~\cite{zheng2023pointodyssey}, and IRS~\cite{wang2021irslargenaturalisticindoor}, totally 0.55 million frames. The TartanAir~\cite{wang2020tartanair}, VKITTI~\cite{cabon2020virtual}, PointOdyssey~\cite{zheng2023pointodyssey}, and IRS~\cite{wang2021irslargenaturalisticindoor} datasets contain 0.31M, 0.04M, 0.1M, and 0.1M frames, respectively. Additionally, 0.18 million frames from wild binocular videos labeled with~\cite{jing2024match-stereo-videos} are included for training. We also incorporate a subset of real-world unlabeled datasets from~\cite{depth_anything_v2} for single image supervision, totaling 0.62 million frames. Notably, we excluded 0.13M frames from PointOdyssey~\cite{zheng2023pointodyssey} that do not contain background depth ground truth, resulting in our usage of only half of the original dataset. Due to the uneven data distribution across the four training datasets, we employ a uniform sampler to ensure that each dataset contributes equally during training.
+
+\paragraph{Implementation Details}
+The weights are initialized from Depth Anything V2~\cite{depth_anything_v2}. Training comprises two stages. In the first stage, synthetic and wild binocular data are used. In the second stage, synthetic videos and unlabeled single images are employed. Models labeled '-Syn' in the main paper are exceptionally trained using synthetic videos and unlabeled images in a single stage. Besides the loss defined in Equation 4 of the main paper used for synthetic videos, unlabeled single images are supervised using the same method as described in~\cite{depth_anything_v2}.
+During training, we uniformly sample video clips of 32 frames from each dataset, resize the shorter edge of images to 518 pixels, and perform random center cropping, resulting in training clips with a resolution of $518 \times 518 \times 32$. We use the AdamW~\cite{loshchilov2017decoupled} optimizer with a cosine scheduler, setting the base learning rate to $1e^{-4}$. The batch size is set to 16 for video frames, each with a length of 32 frames, and 128 for image datasets. The loss weights for the single frame loss, TGM loss, and distillation loss are set to 1.0, 10.0, and 0.5, respectively.
+\label{impl_detail}
+
+\section{More Details of Evaluation}
+
+\paragraph{Evaluation dataset details.} We use a total of five datasets for video depth evaluation: KITTI~\cite{geiger2013vision}, Scannet~\cite{dai2017scannet}, Bonn~\cite{palazzolo2019iros}, NYUv2~\cite{Silberman:ECCV12}, and Sintel~\cite{Butler_Wulff_Stanley_Black_2012}. Specifically, we use Scannet~\cite{dai2017scannet} and NYUv2~\cite{Silberman:ECCV12} for static indoor scenes, Bonn~\cite{palazzolo2019iros} for dynamic indoor scenes, KITTI~\cite{geiger2013vision} for outdoor scenes, and Sintel~\cite{Butler_Wulff_Stanley_Black_2012} for wild scenes. For NYUv2~\cite{Silberman:ECCV12}, we sample 8 videos from the original dataset, which contains 36 videos. Our evaluation comprises three different settings: long videos, long videos with different frame lengths, and short videos. For the long video evaluation, we use all five datasets and set the maximum frame length to 500 for each video. For the evaluation of long videos with different frame lengths, we select subsets of videos with frame lengths greater than 500 from Scannet~\cite{dai2017scannet}, Bonn~\cite{palazzolo2019iros}, and NYUv2~\cite{Silberman:ECCV12}. For the short video evaluation, we use KITTI~\cite{geiger2013vision}, Bonn~\cite{palazzolo2019iros}, and Scannet~\cite{dai2017scannet}, setting the maximum frame lengths to 110, 110, and 90, respectively, in accordance with the settings in DepthCrafter~\cite{hu2024depthcrafter}. In addition to video depth evaluation, we also assess our model's performance on static images. Following ~\cite{depth_anything_v2}, we perform evaluations on five image benchmarks: KITTI~\cite{geiger2013vision}, Sintel~\cite{Butler_Wulff_Stanley_Black_2012}, NYUv2~\cite{Silberman:ECCV12}, ETH3D~\cite{Schops_Schonberger_Galliani_Sattler_Schindler_Pollefeys_Geiger_2017}, and DIODE~\cite{Igor_Nicholas_Zhang_Luo_Wang_Dai_Daniele_Mostajabi_Basart_Walter_et_al_2019}. To ensure a fair comparison, all evaluation videos and images are excluded from the training datasets.
+
+\paragraph{Evaluation metric details.} All video metrics we evaluated are based on ground truth depth. Specifically, we use the least squares method to compute the optimal scale and shift to align the entire inferred video inverse depth with the ground truth inverse depth. The aligned inferred video inverse depth is then transformed into depth, which is subsequently used to compute the video metrics with the ground truth depth. For geometric accuracy, we compute the Absolute Relative Error (AbsRel) and $\delta_1$ metrics, following the procedures outlined in ~\cite{depth_anything_v2,hu2024depthcrafter}. To assess temporal stability, we use the Temporal Alignment Error (TAE) metric in ~\cite{depthanyvideo}, to measure the reprojection error of the depth maps between consecutive frames. We use Equation \ref{eq:correct_tae}.
+\begin{equation}
+\begin{aligned}
+TAE=  \frac {1}{2(N-1)}  &\sum _ {k=1}^ {N-1}  AbsRel(f(  \hat {x}_ {d}^ {k}  ,  p^ {k}  ),  \hat {x}_ {d}^ {k+1}  ) + \\
+&AbsRel(f(  \hat {x}_ {d}^ {k+1}  ,  p^ {k+1}_-  ),  \hat {x}_ {d}^ {k}  )
+\end{aligned}
+\label{eq:correct_tae}
+\end{equation}
+
+Here, $f$ represents the projection function that maps the depth $\hat{x}^k_d$ from the $k$-th frame to the $(k+1)$-th frame using the transformation matrix $p^k$. $p^{k+1}_-$ is the inverse matrix for inverse projection. $N$ denotes the number of frames.
+
+\paragraph{Baseline implementations. } We obtain the inferences of DepthCrafter~\cite{hu2024depthcrafter}, Depth Any Video~\cite{depthanyvideo}, and NVDS~\cite{wang2023neural} using the respective inference code provided by the authors. Specifically, DepthCrafter~\cite{hu2024depthcrafter} employs different inference resolutions for different datasets. Depth Any Video~\cite{depthanyvideo} infers with a maximum dimension of 1024. NVDS~\cite{wang2023neural} performs inference on a video twice, with a minimum dimension of 384, once in the forward direction and once in the backward direction, and computes the mean result from these two passes. For Depth-Anything-V2~\cite{depth_anything_v2}, we obtain the video depth results by inferring each frame individually with a minimum dimension of 518.
+
+\section{Applications}
+\paragraph{Dense point cloud generation.} By aligning single frame with metric depth, which can be obtained from a metric depth model or a sparse point cloud acquired through SLAM, our model can generate a depth point cloud for the entire environment using camera information. The generated point cloud can then be transformed into a mesh and utilized for 3D reconstruction, AR, and VR applications. We present a point cloud generation case in Fig. \ref{fig:application_pcd}. Here, we sample 10 frames spanning approximately 5 seconds from the KITTI dataset~\cite{geiger2013vision}. After obtaining the inferred inverse depth, we compute the global scale and shift by aligning the first frame with the corresponding metric inverse depth. We then apply the affine transformation to the entire set of inverse depth frames and convert them to depth. The final point cloud is generated by merging the point clouds from each frame. As shown in Fig. \ref{fig:application_pcd}, our model generates a clean and regular point cloud compared to DepthCrafter~\cite{hu2024depthcrafter} and Depth Any Video~\cite{depthanyvideo}. Point cloud generation for wild videos is illustrated in Fig. \ref{fig:application_pcd_wild}. Compared to DepthCrafter~\cite{hu2024depthcrafter} and DepthAnyVideo~\cite{depthanyvideo}, our model produces more regular point clouds.
+
+\input{figures/app_stereo}
+
+\input{figures/app_pcd}
+
+\input{figures/app_pcd_wild}
+
+\paragraph{3D Video Conversion.} Our model can be used to generate 3D videos. Compared to 3D videos generated by monocular depth models, those produced by our video depth model exhibit smoother and more consistent 3D effects. An example is presented in Fig.\ref{fig:app_stereo}.

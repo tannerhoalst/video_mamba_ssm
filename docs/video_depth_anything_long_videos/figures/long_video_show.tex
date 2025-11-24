@@ -1,0 +1,20 @@
+% \begin{figure*}[t]
+%  \begin{tabular}{@{\extracolsep{\fill}}c@{}c@{\extracolsep{\fill}}}
+%             \includegraphics[width=0.5\linewidth]{figures/imgs/short_video_show.pdf} &
+%             \includegraphics[width=0.5\linewidth]{figures/imgs/long_video_show.pdf}\\
+%             (a)Short Videos & (b)Long Videos\\
+%     \end{tabular}
+%    \caption{Overview and inference}
+%    \label{fig:long_video_show}
+% \end{figure*}
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{figures/imgs/long_video_show2-cut.pdf}
+    \caption{\textbf{Qualitative comparison for real-world long video depth estimation.} We compare our model with DAv2-L~\cite{depth_anything_v2} and DepthCrafter~\cite{hu2024depthcrafter} on 500-frame videos from Scannet~\cite{dai2017scannet} and Bonn~\cite{palazzolo2019iros}. 
+    % The second column represents image temporal profiles obtained by slicing images along the timeline at the red line positions. The subsequent columns represent the corresponding depth profiles. The red boxes highlight instances where the depth profile of our model more closely resembles the ground truth (GT) compared to DepthCrafter~\cite{hu2024depthcrafter}, indicating superior geometric accuracy. Furthermore, our model demonstrates better temporal consistency, as shown in the blue boxes. In these instances, DepthCrafter~\cite{hu2024depthcrafter} exhibits drifted depth, and DAv2-L~\cite{depth_anything_v2} produces flickering depth. 
+    }
+    \label{fig:long_video_show}
+    \vspace{-18pt}
+\end{figure}

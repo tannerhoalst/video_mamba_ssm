@@ -1,0 +1,19 @@
+\begin{table}[]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\centering
+Strategy & Window & AbsRel~(↓) & $\delta_1$~~(↑) & TAE~(↓) \\
+\midrule 
+Baseline     & 16 & 0.157  & 0.826  & 0.874  \\
+OA    & 16 & 0.146  & 0.845  & 0.792  \\
+OI    & 16 & 0.157  & 0.826  & 0.783  \\
+OI+KR(Ours) & 16 & 0.145  & 0.849  & 0.761  \\
+OI+KR(Ours) & 32 & \underline{0.144}  & \underline{0.851}  & \textbf{0.718} \\
+OI+KR(Ours) & 48 & \textbf{0.143}  & \textbf{0.852}  & \underline{0.732} \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Ablation studies on the effectiveness of different inference strategies and window sizes.} ``Baseline'' denotes directly inference for video clips without overlapping. ``OA'' denotes inference with a overlap of 4 frames and perform scale-shift alignment across windows. ``OI'' denotes depth clip stitching with a overlap of 4 frames. ``OI+KR'' combines the ``OI'' with our proposed key-frame referencing with extra 2 key-frames.}
+\label{tab::infer_strategy}
+\vspace{-8pt}
+\end{table}

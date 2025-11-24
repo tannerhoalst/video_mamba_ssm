@@ -1,0 +1,246 @@
+\begin{thebibliography}{10}\itemsep=-1pt
+
+\bibitem{bhat2021adabins}
+Shariq~Farooq Bhat, Ibraheem Alhashim, and Peter Wonka.
+\newblock Adabins: Depth estimation using adaptive bins.
+\newblock In {\em Proceedings of the IEEE/CVF conference on computer vision and pattern recognition}, pages 4009--4018, 2021.
+
+\bibitem{bhat2023zoedepth}
+Shariq~Farooq Bhat, Reiner Birkl, Diana Wofk, Peter Wonka, and Matthias M{\"u}ller.
+\newblock Zoedepth: Zero-shot transfer by combining relative and metric depth.
+\newblock {\em arXiv preprint arXiv:2302.12288}, 2023.
+
+\bibitem{birkl2023midas}
+Reiner Birkl, Diana Wofk, and Matthias M{\"u}ller.
+\newblock Midas v3. 1--a model zoo for robust monocular relative depth estimation.
+\newblock {\em arXiv preprint arXiv:2307.14460}, 2023.
+
+\bibitem{blattmann2023stable}
+Andreas Blattmann, Tim Dockhorn, Sumith Kulal, Daniel Mendelevitch, Maciej Kilian, Dominik Lorenz, Yam Levi, Zion English, Vikram Voleti, Adam Letts, et~al.
+\newblock Stable video diffusion: Scaling latent video diffusion models to large datasets.
+\newblock {\em arXiv preprint arXiv:2311.15127}, 2023.
+
+\bibitem{Butler_Wulff_Stanley_Black_2012}
+Daniel~J. Butler, Jonas Wulff, Garrett~B. Stanley, and Michael~J. Black.
+\newblock {\em A Naturalistic Open Source Movie for Optical Flow Evaluation}, page 611–625.
+\newblock Jan 2012.
+
+\bibitem{cabon2020virtual}
+Yohann Cabon, Naila Murray, and Martin Humenberger.
+\newblock Virtual kitti 2.
+\newblock {\em arXiv preprint arXiv:2001.10773}, 2020.
+
+\bibitem{dai2017scannet}
+Angela Dai, Angel~X Chang, Manolis Savva, Maciej Halber, Thomas Funkhouser, and Matthias Nie{\ss}ner.
+\newblock Scannet: Richly-annotated 3d reconstructions of indoor scenes.
+\newblock In {\em Proceedings of the IEEE conference on computer vision and pattern recognition}, pages 5828--5839, 2017.
+
+\bibitem{dong2022towards}
+Xingshuai Dong, Matthew~A Garratt, Sreenatha~G Anavatti, and Hussein~A Abbass.
+\newblock Towards real-time monocular depth estimation for robotics: A survey.
+\newblock {\em IEEE Transactions on Intelligent Transportation Systems}, 23(10):16940--16961, 2022.
+
+\bibitem{eigen2014depth}
+David Eigen, Christian Puhrsch, and Rob Fergus.
+\newblock Depth map prediction from a single image using a multi-scale deep network.
+\newblock {\em Advances in neural information processing systems}, 27, 2014.
+
+\bibitem{fu2018dorn}
+Huan Fu, Mingming Gong, Chaohui Wang, Kayhan Batmanghelich, and Dacheng Tao.
+\newblock Deep ordinal regression network for monocular depth estimation.
+\newblock In {\em Proceedings of the IEEE conference on computer vision and pattern recognition}, pages 2002--2011, 2018.
+
+\bibitem{geiger2013vision}
+Andreas Geiger, Philip Lenz, Christoph Stiller, and Raquel Urtasun.
+\newblock Vision meets robotics: The kitti dataset.
+\newblock {\em The International Journal of Robotics Research}, 32(11):1231--1237, 2013.
+
+\bibitem{holynski2018fast}
+Aleksander Holynski and Johannes Kopf.
+\newblock Fast depth densification for occlusion-aware augmented reality.
+\newblock {\em ACM Transactions on Graphics (ToG)}, 37(6):1--11, 2018.
+
+\bibitem{hu2024depthcrafter}
+Wenbo Hu, Xiangjun Gao, Xiaoyu Li, Sijie Zhao, Xiaodong Cun, Yong Zhang, Long Quan, and Ying Shan.
+\newblock Depthcrafter: Generating consistent long depth sequences for open-world videos.
+\newblock {\em arXiv preprint arXiv:2409.02095}, 2024.
+
+\bibitem{huang2024wildavatar}
+Zihao Huang, ShouKang Hu, Guangcong Wang, Tianqi Liu, Yuhang Zang, Zhiguo Cao, Wei Li, and Ziwei Liu.
+\newblock Wildavatar: Web-scale in-the-wild video dataset for 3d avatar creation.
+\newblock {\em arXiv preprint arXiv:2407.02165}, 2024.
+
+\bibitem{Igor_Nicholas_Zhang_Luo_Wang_Dai_Daniele_Mostajabi_Basart_Walter_et_al_2019}
+Vasiljevic Igor, Kolkin Nicholas, Shanyi Zhang, Ruotian Luo, Haochen Wang, FalconZ. Dai, AndreaF. Daniele, Mohammadreza Mostajabi, Steven Basart, MatthewR. Walter, and Gregory Shakhnarovich.
+\newblock Diode: A dense indoor and outdoor depth dataset.
+\newblock {\em arXiv: Computer Vision and Pattern Recognition,arXiv: Computer Vision and Pattern Recognition}, Aug 2019.
+
+\bibitem{jing2024match-stereo-videos}
+Junpeng Jing, Ye Mao, and Krystian Mikolajczyk.
+\newblock Match-stereo-videos: Bidirectional alignment for consistent dynamic stereo matching.
+\newblock 2024.
+
+\bibitem{marigold}
+Bingxin Ke, Anton Obukhov, Shengyu Huang, Nando Metzger, Rodrigo~Caye Daudt, and Konrad Schindler.
+\newblock Repurposing diffusion-based image generators for monocular depth estimation.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, pages 9492--9502, 2024.
+
+\bibitem{kopf2021robust}
+Johannes Kopf, Xuejian Rong, and Jia-Bin Huang.
+\newblock Robust consistent video depth estimation.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, pages 1611--1621, 2021.
+
+\bibitem{10.1145/3591106.3592264}
+Pengzhi Li, Yikang Ding, Linge Li, Jingwei Guan, and Zhiheng Li.
+\newblock Towards practical consistent video depth estimation.
+\newblock In {\em Proceedings of the 2023 ACM International Conference on Multimedia Retrieval}, ICMR '23, page 388–397, New York, NY, USA, 2023. Association for Computing Machinery.
+
+\bibitem{loshchilov2017decoupled}
+I Loshchilov.
+\newblock Decoupled weight decay regularization.
+\newblock {\em arXiv preprint arXiv:1711.05101}, 2017.
+
+\bibitem{luo2020consistent}
+Xuan Luo, Jia-Bin Huang, Richard Szeliski, Kevin Matzen, and Johannes Kopf.
+\newblock Consistent video depth estimation.
+\newblock {\em ACM Transactions on Graphics (ToG)}, 39(4):71--1, 2020.
+
+\bibitem{Silberman:ECCV12}
+Pushmeet~Kohli Nathan~Silberman, Derek~Hoiem and Rob Fergus.
+\newblock Indoor segmentation and support inference from rgbd images.
+\newblock In {\em ECCV}, 2012.
+
+\bibitem{oquab2023dinov2}
+Maxime Oquab, Timoth{\'e}e Darcet, Th{\'e}o Moutakanni, Huy Vo, Marc Szafraniec, Vasil Khalidov, Pierre Fernandez, Daniel Haziza, Francisco Massa, Alaaeldin El-Nouby, et~al.
+\newblock Dinov2: Learning robust visual features without supervision.
+\newblock {\em arXiv preprint arXiv:2304.07193}, 2023.
+
+\bibitem{palazzolo2019iros}
+E. Palazzolo, J. Behley, P. Lottes, P. Gigu\`ere, and C. Stachniss.
+\newblock {ReFusion: 3D Reconstruction in Dynamic Environments for RGB-D Cameras Exploiting Residuals}.
+\newblock 2019.
+
+\bibitem{peng2024controlnext}
+Bohao Peng, Jian Wang, Yuechen Zhang, Wenbo Li, Ming-Chang Yang, and Jiaya Jia.
+\newblock Controlnext: Powerful and efficient control for image and video generation.
+\newblock {\em arXiv preprint arXiv:2408.06070}, 2024.
+
+\bibitem{Perazzi2016davis}
+F. Perazzi, J. Pont-Tuset, B. McWilliams, L. {Van Gool}, M. Gross, and A. Sorkine-Hornung.
+\newblock A benchmark dataset and evaluation methodology for video object segmentation.
+\newblock In {\em Computer Vision and Pattern Recognition}, 2016.
+
+\bibitem{piccinelli2024unidepth}
+Luigi Piccinelli, Yung-Hsu Yang, Christos Sakaridis, Mattia Segu, Siyuan Li, Luc Van~Gool, and Fisher Yu.
+\newblock Unidepth: Universal monocular metric depth estimation.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, pages 10106--10116, 2024.
+
+\bibitem{ranftl2021vision}
+Ren{\'e} Ranftl, Alexey Bochkovskiy, and Vladlen Koltun.
+\newblock Vision transformers for dense prediction.
+\newblock In {\em Proceedings of the IEEE/CVF international conference on computer vision}, pages 12179--12188, 2021.
+
+\bibitem{sayed2022simplerecon}
+Mohamed Sayed, John Gibson, Jamie Watson, Victor Prisacariu, Michael Firman, and Cl{\'e}ment Godard.
+\newblock Simplerecon: 3d reconstruction without 3d convolutions.
+\newblock In {\em European Conference on Computer Vision}, pages 1--19. Springer, 2022.
+
+\bibitem{schonberger2016structure}
+Johannes~L Schonberger and Jan-Michael Frahm.
+\newblock Structure-from-motion revisited.
+\newblock In {\em Proceedings of the IEEE conference on computer vision and pattern recognition}, pages 4104--4113, 2016.
+
+\bibitem{Schops_Schonberger_Galliani_Sattler_Schindler_Pollefeys_Geiger_2017}
+Thomas Schops, Johannes~L. Schonberger, Silvano Galliani, Torsten Sattler, Konrad Schindler, Marc Pollefeys, and Andreas Geiger.
+\newblock A multi-view stereo benchmark with high-resolution images and multi-camera videos.
+\newblock In {\em 2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, Jul 2017.
+
+\bibitem{chronodepth}
+Jiahao Shao, Yuanbo Yang, Hongyu Zhou, Youmin Zhang, Yujun Shen, Matteo Poggi, and Yiyi Liao.
+\newblock Learning temporally consistent video depth from video diffusion priors.
+\newblock {\em arXiv preprint arXiv:2406.01493}, 2024.
+
+\bibitem{teed2020raft}
+Zachary Teed and Jia Deng.
+\newblock Raft: Recurrent all-pairs field transforms for optical flow.
+\newblock In {\em Computer Vision--ECCV 2020: 16th European Conference, Glasgow, UK, August 23--28, 2020, Proceedings, Part II 16}, pages 402--419. Springer, 2020.
+
+\bibitem{vaswani2017attention}
+A Vaswani.
+\newblock Attention is all you need.
+\newblock {\em Advances in Neural Information Processing Systems}, 2017.
+
+\bibitem{wang2021irslargenaturalisticindoor}
+Qiang Wang, Shizhen Zheng, Qingsong Yan, Fei Deng, Kaiyong Zhao, and Xiaowen Chu.
+\newblock Irs: A large naturalistic indoor robotics stereo dataset to train deep models for disparity and surface normal estimation, 2021.
+
+\bibitem{wang2024moge}
+Ruicheng Wang, Sicheng Xu, Cassie Dai, Jianfeng Xiang, Yu Deng, Xin Tong, and Jiaolong Yang.
+\newblock Moge: Unlocking accurate monocular geometry estimation for open-domain images with optimal training supervision, 2024.
+
+\bibitem{wang2020tartanair}
+Wenshan Wang, Delong Zhu, Xiangwei Wang, Yaoyu Hu, Yuheng Qiu, Chen Wang, Yafei Hu, Ashish Kapoor, and Sebastian Scherer.
+\newblock Tartanair: A dataset to push the limits of visual slam.
+\newblock In {\em 2020 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, pages 4909--4916. IEEE, 2020.
+
+\bibitem{Wang_2022}
+Yiran Wang, Zhiyu Pan, Xingyi Li, Zhiguo Cao, Ke Xian, and Jianming Zhang.
+\newblock Less is more: Consistent video depth estimation with masked frames modeling.
+\newblock In {\em Proceedings of the 30th ACM International Conference on Multimedia}, MM ’22, page 6347–6358. ACM, Oct. 2022.
+
+\bibitem{wang2023neural}
+Yiran Wang, Min Shi, Jiaqi Li, Zihao Huang, Zhiguo Cao, Jianming Zhang, Ke Xian, and Guosheng Lin.
+\newblock Neural video depth stabilizer.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on Computer Vision}, pages 9466--9476, 2023.
+
+\bibitem{xu2022gmflow}
+Haofei Xu, Jing Zhang, Jianfei Cai, Hamid Rezatofighi, and Dacheng Tao.
+\newblock Gmflow: Learning optical flow via global matching.
+\newblock In {\em Proceedings of the IEEE/CVF conference on computer vision and pattern recognition}, pages 8121--8130, 2022.
+
+\bibitem{depthanyvideo}
+Honghui Yang, Di Huang, Wei Yin, Chunhua Shen, Haifeng Liu, Xiaofei He, Binbin Lin, Wanli Ouyang, and Tong He.
+\newblock Depth any video with scalable synthetic data.
+\newblock {\em arXiv preprint arXiv:2410.10815}, 2024.
+
+\bibitem{depth_anything_v1}
+Lihe Yang, Bingyi Kang, Zilong Huang, Xiaogang Xu, Jiashi Feng, and Hengshuang Zhao.
+\newblock Depth anything: Unleashing the power of large-scale unlabeled data.
+\newblock In {\em CVPR}, 2024.
+
+\bibitem{depth_anything_v2}
+Lihe Yang, Bingyi Kang, Zilong Huang, Zhen Zhao, Xiaogang Xu, Jiashi Feng, and Hengshuang Zhao.
+\newblock Depth anything v2.
+\newblock {\em arXiv:2406.09414}, 2024.
+
+\bibitem{yasarla2023mamo}
+Rajeev Yasarla, Hong Cai, Jisoo Jeong, Yunxiao Shi, Risheek Garrepalli, and Fatih Porikli.
+\newblock Mamo: Leveraging memory and attention for monocular video depth estimation.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on Computer Vision}, pages 8754--8764, 2023.
+
+\bibitem{yin2023metric3d}
+Wei Yin, Chi Zhang, Hao Chen, Zhipeng Cai, Gang Yu, Kaixuan Wang, Xiaozhi Chen, and Chunhua Shen.
+\newblock Metric3d: Towards zero-shot metric 3d prediction from a single image.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on Computer Vision}, pages 9043--9053, 2023.
+
+\bibitem{yuan2022crf}
+Weihao Yuan, Xiaodong Gu, Zuozhuo Dai, Siyu Zhu, and Ping Tan.
+\newblock Neural window fully-connected crfs for monocular depth estimation.
+\newblock In {\em Proceedings of the IEEE/CVF conference on computer vision and pattern recognition}, pages 3916--3925, 2022.
+
+\bibitem{zhang2023controlvideo}
+Yabo Zhang, Yuxiang Wei, Dongsheng Jiang, Xiaopeng Zhang, Wangmeng Zuo, and Qi Tian.
+\newblock Controlvideo: Training-free controllable text-to-video generation.
+\newblock {\em arXiv preprint arXiv:2305.13077}, 2023.
+
+\bibitem{zhang2021consistent}
+Zhoutong Zhang, Forrester Cole, Richard Tucker, William~T Freeman, and Tali Dekel.
+\newblock Consistent depth of moving objects in video.
+\newblock {\em ACM Transactions on Graphics (ToG)}, 40(4):1--12, 2021.
+
+\bibitem{zheng2023pointodyssey}
+Yang Zheng, Adam~W Harley, Bokui Shen, Gordon Wetzstein, and Leonidas~J Guibas.
+\newblock Pointodyssey: A large-scale synthetic dataset for long-term point tracking.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on Computer Vision}, pages 19855--19865, 2023.
+
+\end{thebibliography}

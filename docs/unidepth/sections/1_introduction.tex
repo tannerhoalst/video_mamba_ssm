@@ -1,0 +1,55 @@
+\section{Introduction}
+\label{sec:intro}
+
+\IEEEPARstart{P}{recise} pixel-wise depth estimation is crucial to understanding the geometric scene structure, with applications in 3D modeling~\cite{deng2022nerf}, robotics~\cite{Zhou2019, dong2022depth4robotics}, and autonomous vehicles~\cite{wang2019depth4vehicles, park2021dd3d}.
+However, delivering reliable metric scaled depth outputs is necessary to perform 3D reconstruction effectively, thus motivating the challenging and inherently ill-posed task of Monocular Metric Depth Estimation (MMDE).
+
+\input{figures/0_teaser}
+
+
+While existing MMDE methods~\cite{Eigen2014, Fu2018Dorn, Bhat2020adabins, Ranftl2021dpt, Patil2022p3depth, Yuan2022newcrf, piccinelli2023idisc} have demonstrated remarkable accuracy across different benchmarks, they require training and testing on datasets with similar camera intrinsics and scene scales.
+Moreover, the training datasets typically have a limited size and contain little diversity in scenes and cameras.
+These characteristics result in poor generalization to real-world inference scenarios~\cite{Wang2020traingermany}, where images are captured in uncontrolled, arbitrarily structured environments and cameras with arbitrary intrinsics. \blue{What makes the situation even worse is the imperfect nature of actual ground-truth depth which is used to supervise MMDE models, namely its sparsity and its incompleteness near edges, which results in blurry predictions with inaccurate fine-grained geometric details.}
+
+
+Only a few methods~\cite{yin2023metric3d, guizilini2023zerodepth, hu2024metric3dv2} have addressed the challenging task of generalizable MMDE.
+However, these methods assume controlled setups at test time, including camera intrinsics. 
+While this assumption simplifies the task, it has two notable drawbacks.
+Firstly, it does not address the full application spectrum, \eg in-the-wild video processing and crowd-sourced image analysis.
+Secondly, the inherent camera parameter noise is directly injected into the model, leading to large inaccuracies in the high-noise case.
+% \blue{At the same time, while there has recently been significant progress in improving the sharpness and localization of depth discontinuities and fine geometric details in monocular \emph{relative} depth estimation~\cite{ke2024marigold, dav}, these advances have not been extended to standard non-iterative \emph{metric} depth estimators that run a single feed-forward pass for inference and need to solve a more complex, scale-dependent task.}
+
+In this work, we address the more demanding task of generalizable MMDE \emph{without} any reliance on additional external information, such as camera parameters, thus defining the universal MMDE task.
+Our approach, named \ourmodel{}, extends UniDepth~\cite{piccinelli2024unidepth} and is the first that attempts to solve this challenging task without restrictions on scene composition and setup and distinguishes itself through its general and adaptable nature. 
+Unlike existing methods, \ourmodel delivers metric 3D predictions for any scene \emph{solely} from a single image, waiving the need for extra information about scene or camera.
+Furthermore, \ourmodel flexibly allows for the incorporation of additional camera information at test time. \blue{Simultaneously, \ourmodel achieves sharper depth predictions with better-localized depth discontinuities than the original UniDepth model thanks to a novel edge-guided loss that enhances the consistency of the local structure of depth predictions around edges with the respective structure in the ground truth.}
+
+\blue{The design of \ourmodel} introduces a camera module that outputs a non-parametric, \ie{}dense camera representation, serving as the prompt to the depth module. 
+However, relying only on this single additional module clearly results in challenges related to training stability and scale ambiguity.
+We propose an effective pseudo-spherical representation of the output space to disentangle the camera and depth dimensions of this space.
+This representation employs azimuth and elevation angle components for the camera and a radial component for the depth, forming a perfect orthogonal space between the camera plane and the depth axis.
+% 
+Moreover, \blue{the pinhole-based camera representation is positionally encoded via a sine encoding in \ourmodel, leading to a substantially more efficient computation compared to the spherical harmonic encoding of the pinhole-based representation of the original UniDepth.}
+Figure~\ref{fig:teaser} depicts our camera self-prompting mechanism and the output space.
+Additionally, we introduce a geometric invariance loss to enhance the robustness of depth estimation. 
+The underlying idea is that the camera-conditioned depth \blue{outputs} from two views of the same image should exhibit reciprocal consistency.
+In particular, we sample two geometric augmentations, creating different views for each training image, thus simulating different apparent cameras for the original scene. \blue{Besides the aforementioned consistency-oriented invariance loss, \ourmodel features an additional uncertainty output and respective loss. These pixel-level uncertainties are supervised with the differences between the respective depth predictions and their corresponding ground-truth values, and enable the utilization of our MMDE model in downstream tasks such as control which require confidence-aware perception inputs~\cite{bonzanini2021perception,mesbah2016stochastic,yang2023safe,bemporad2007robust} for certifiability.}
+
+\blue{The overall contributions of the present, extended journal version of our work are the first universal MMDE methods, the original UniDepth and the newer \ourmodel,} which predict a point in metric 3D space for each pixel without \emph{any} input other than a single image. \blue{An earlier version of this work has appeared in the Conference on Computer Vision and Pattern Recognition~\cite{piccinelli2024unidepth} and has introduced our original UniDepth model. In~\cite{piccinelli2024unidepth}, we have first designed} a promptable camera module, an architectural component that learns a dense camera representation and allows for non-parametric camera conditioning.
+Second, we \blue{have proposed} a pseudo-spherical representation of the output space, thus solving the intertwined nature of camera and depth prediction.
+In addition, we \blue{have introduced} a geometric invariance loss to disentangle the camera information from the underlying 3D geometry of the scene.
+\blue{Moreover, in the conference version, we have extensively evaluated and compared UniDepth}
+% and re-evaluated seven MMDE State-of-the-Art (SotA) methods
+on ten different datasets in a fair and comparable zero-shot setup to lay the ground for \blue{our novel} generalized MMDE task.
+Owing to its design, UniDepth consistently set the state of the art even compared with non-zero-shot methods, ranking first \blue{at the time of its appearance} in the competitive official KITTI Depth Prediction Benchmark.
+\blue{Compared to the aforementioned conference version, this article makes the following additional contributions:
+\begin{enumerate}
+    \item A revisited architectural design of the camera-conditioned monocular metric depth estimator network, which makes \ourmodel simpler, substantially more efficient in computation time and parameters, and at the same time more accurate than UniDepth. This design upgrade pertains to the simplification of the connections between the Camera Module and the Depth Module of the network, the more economic sinusoidal embedding of the pinhole-based dense camera representations fed to the Depth Module that we newly adopt, the inclusion of multi-resolution features and convolutional layers in our depth decoder, and the application of the geometric invariance loss solely on output-space features.
+    \item A novel edge-guided scale-shift-invariant loss, which is computed from the predicted and ground-truth depth maps around geometric edges of the input, encourages \ourmodel to preserve the local structure of the depth map better, and thus enhances the sharpness of depth outputs substantially compared to UniDepth even on camera and scene domains which are unseen during training.
+    \item An improved practical training strategy that presents the network with a greater diversity of input image shapes and resolutions within each mini-batch and hence with a larger range of intrinsic parameters of the assumed pinhole camera model, leading to increased robustness to the specific input distribution during inference.
+    \item An additional, uncertainty-level output, which requires no additional supervisory signal during training yet allows to quantify confidence during inference reliably and thus enables downstream applications to geometric perception, \eg{} control, which require confidence-aware depth inputs.
+    % \item The methodological novelties introduced lead to improved performance of \ourmodel both in the standard metric depth estimation task and in the more complex metric 3D estimation task compared to UniDepth across a wide range of camera and scene domains, which is demonstrated through an extensive set of comparisons to the latest state-of-the-art methods as well as ablation studies on 10 widely used depth estimation benchmarks, both in the challenging zero-shot evaluation setting and in the practical supervised fine-tuning setting, and sets the \emph{new state of the art} in MMDE. In particular, \ourmodel ranks first among published methods in the competitive official public KITTI Depth Prediction Benchmark.
+\end{enumerate}
+The methodological novelties introduced lead to improved performance, robustness, and efficiency of \ourmodel compared to UniDepth across a wide range of camera and scene domains.
+This is demonstrated through an extensive set of comparisons to the latest state-of-the-art methods as well as ablation studies on 10 depth estimation benchmarks, both in the challenging zero-shot evaluation setting and in the practical supervised fine-tuning setting.
+\ourmodel sets the overall \emph{new state of the art} in MMDE and ranks first among published methods in the competitive official public KITTI Depth Prediction Benchmark.}

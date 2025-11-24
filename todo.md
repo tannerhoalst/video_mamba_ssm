@@ -1,328 +1,213 @@
-# UniDepthV2 + Mamba SSM Residual Smoother – TODO
-
-Goal: Use **UniDepthV2** as the per-frame oracle for metric depth, and train a **Mamba-style SSM** that takes UniDepth depth sequences (plus optional cues) and outputs **small residual corrections** to make depth **more temporally consistent** and slightly more accurate — **without ever drifting far from UniDepth**.
+# TODO.md — UniDepthV2 → Video Metric Depth (Temporal + Stereo Ready)
+A residual, motion-aware, metric-preserving temporal refiner for VR video depth.
 
 ---
 
-## Phase 0 – Project Skeleton & Dependencies
+# Goal
+Extend UniDepthV2 to video by adding a temporal SSM residual smoother that:
+- preserves metric scale
+- keeps per-frame accuracy
+- reduces flicker and aliasing
+- becomes a drop-in module for VR stereo warping
+Teacher is frozen. Student predicts small residual ΔD only.
 
-- [ ] Create repo structure:
-  - [ ] `videomamba_smoother/`
-  - [ ] `videomamba_smoother/models/teacher_unidepth.py`   # UniDepthV2 wrapper (frozen)
-  - [ ] `videomamba_smoother/models/ssm_smoother.py`      # Mamba-based temporal smoother
-  - [ ] `videomamba_smoother/models/feature_encoder.py`   # small CNN for low-res RGB/aux features (optional)
-  - [ ] `videomamba_smoother/data/dataset_video.py`       # video → depth sequence dataset
-  - [ ] `videomamba_smoother/data/transforms.py`          # resizing, intrinsics, downsampling
-  - [ ] `videomamba_smoother/losses/anchor_to_teacher.py` # L_close: stay near UniDepth
-  - [ ] `videomamba_smoother/losses/temporal_smooth.py`   # temporal smoothness / consistency
-  - [ ] `videomamba_smoother/losses/utils.py`             # helpers for masks / log-depth
-  - [ ] `videomamba_smoother/utils/logger.py`
-  - [ ] `videomamba_smoother/utils/checkpoint.py`
-  - [ ] `videomamba_smoother/utils/metrics.py`
-  - [ ] `scripts/precompute_unidepth_depth.py`
-  - [ ] `scripts/preview_depth_sequence.py`
-  - [ ] `train_smoother.py`
-  - [ ] `inference_smoother.py`
-  - [ ] `config.py` or `configs/` folder
+---
 
+# Phase 0 — Setup & Baselines
+- [ ] Verify UniDepthV2 single-frame inference:
+  - [ ] camera prompt correct
+  - [ ] pseudo-spherical output mode
+  - [ ] edge-guided input preprocessing matched
+- [ ] Implement baseline temporal filters for comparison:
+  - [ ] EMA
+  - [ ] temporal bilateral
+  - [ ] measure static-region variance → flicker baseline
+- [ ] Add teacher confidence calibration:
+  - [ ] record UniDepth uncertainty
+  - [ ] capture variance on a static scene
+  - [ ] map teacher uncertainty → reliability weighting
 - [ ] Install dependencies:
-  - [ ] PyTorch + CUDA
-  - [ ] Mamba/VMamba implementation (e.g. `mamba-ssm`, `vmamba`)
-  - [ ] `torchvision`, `tqdm`, `einops`, `numpy`
-  - [ ] `opencv-python` or `decord` / `pyav` for video I/O
-  - [ ] UniDepthV2 dependency (install from its repo / wheel)
-
-- [ ] Sanity check:
-  - [ ] Confirm a bare `train_smoother.py` runs (argument parsing + dummy loop)
-  - [ ] Confirm imports of all modules work
-
----
-
-## Phase 1 – UniDepthV2 Teacher & Raw Depth Generation
-
-### 1.1 UniDepthV2 Teacher Wrapper
-
-- [ ] Implement / refine `videomamba_smoother/models/teacher_unidepth.py`:
-
-  - [ ] `class UniDepthTeacher(nn.Module):`
-    - [ ] Load pretrained UniDepthV2 model (`UniDepthV2.from_pretrained(...)`)
-    - [ ] Move to device, set `.eval()`, freeze all params (`requires_grad_(False)`)
-
-  - [ ] `predict_depth(rgb, K=None) -> dict`:
-    - [ ] Input:
-      - [ ] `rgb`: `[B,3,H,W]` tensor, resized + normalized as UniDepth expects
-      - [ ] `K`: optional `[B,3,3]` intrinsics (resized coordinates)
-    - [ ] Output dict:
-      - [ ] `"depth"`: `[B,1,H,W]` metric depth
-      - [ ] `"intrinsics"`: `[B,3,3]` (either given or predicted)
-      - [ ] `"uncertainty"`: `[B,1,H,W]` or `None`
-
-- [ ] Quick test script:
-  - [ ] Load single RGB frame from disk
-  - [ ] Build dummy K
-  - [ ] Run `predict_depth`
-  - [ ] Visualize depth as a grayscale PNG to inspect sanity
-
-### 1.2 Precompute Teacher Depth Sequences (Offline)
-
-- [ ] Implement `scripts/precompute_unidepth_depth.py`:
-
-  - [ ] CLI args:
-    - [ ] `--video_root`, `--output_root`, `--long_edge`, `--stride`, etc.
-  - [ ] For each video:
-    - [ ] Decode frames at chosen fps/stride
-    - [ ] Compute intrinsics for each frame (or per video)
-    - [ ] Apply transforms: resize + intrinsics update (see Phase 2)
-    - [ ] Run `UniDepthTeacher.predict_depth` on each frame
-    - [ ] Save per-frame:
-      - [ ] `depth_teacher`: `.npy` or `.pt` → `[1,H,W]`
-      - [ ] optional `uncertainty` map
-      - [ ] store K and original resolution (per video)
-
-- [ ] Validation:
-  - [ ] Write `scripts/preview_depth_sequence.py`:
-    - [ ] Load a saved depth sequence
-    - [ ] Make a small preview video or grid of frames
-    - [ ] Confirm continuity, value range, etc.
+  - [ ] Torch + CUDA, UniDepthV2, Mamba/VMamba, GMFlow/RAFT/UniMatch (optional)
+  - [ ] decord or PyAV, einops, tqdm, lpips, ffmpeg
+- [ ] Prepare anti-collapse strategy:
+  - [ ] small % pseudo-GT clips (KITTI, TUM, ScanNet, synthetic)
+  - [ ] OR mild teacher jitter (noise + small scale shift)
+- [ ] Define temporal window pattern:
+  - [ ] window length N
+  - [ ] overlap To
+  - [ ] keyframes Tk
+  - [ ] keyframe stride Δk
+  - [ ] same pattern used for both training and inference
 
 ---
 
-## Phase 2 – Depth Sequence Dataset & Transforms
-
-### 2.1 Resizing & Intrinsics Handling
-
-- [ ] Implement `videomamba_smoother/data/transforms.py`:
-
-  - [ ] `resize_and_update_intrinsics(img, K, target_long_edge)`:
-    - [ ] Resize so long edge = `target_long_edge`
-    - [ ] Compute `sx, sy` scaling factors
-    - [ ] Update fx, fy, cx, cy in K accordingly
-    - [ ] Optionally pad to a multiple (e.g. 16) and adjust cx, cy
-
-  - [ ] `downsample_depth(depth, factor)`:
-    - [ ] Use average pooling or bilinear downsample for `[1,H,W] → [1,H',W']`
-    - [ ] (Keep metric scale; only change resolution)
-
-  - [ ] If needed: `resize_rgb_for_features(rgb)`:
-    - [ ] Low-res RGB for optional feature encoder (e.g. `[3,H/4,W/4]`)
-
-### 2.2 Depth-Sequence Dataset
-
-- [ ] Implement `videomamba_smoother/data/dataset_video.py`:
-
-  - [ ] Dataset uses **precomputed** teacher outputs:
-    - [ ] Directory structure, e.g.:
-      - [ ] `video_root/<video_id>/frame_<t>.png` or `.jpg`
-      - [ ] `depth_root/<video_id>/depth_<t>.npy`
-      - [ ] (Optional) `uncertainty_root/<video_id>/uncert_<t>.npy`
-      - [ ] JSON/metadata with intrinsics, original size
-
-  - [ ] `__getitem__(idx)`:
-    - [ ] Determine which video and temporal window this index corresponds to
-    - [ ] Load clip of length `N` frames:
-      - [ ] `D_teacher_seq: [N,1,H,W]`
-      - [ ] (Optional) low-res `RGB_seq: [N,3,H_rgb,W_rgb]`
-      - [ ] `K_seq: [N,3,3]` if needed (mostly for metadata here)
-      - [ ] `uncertainty_seq: [N,1,H,W]` (optional)
-
-    - [ ] Downsample depth for SSM if desired:
-      - [ ] e.g. `H_s, W_s = H/2, W/2`
-      - [ ] `D_teacher_low: [N,1,H_s,W_s]`
-
-    - [ ] Return dict:
-      - [ ] `"depth_teacher"`: `[N,1,H_s,W_s]`
-      - [ ] `"rgb_low"` (optional): `[N,3,H_rgb,W_rgb]`
-      - [ ] `"uncertainty"` (optional): `[N,1,H_s,W_s]`
-      - [ ] `"video_id"`, `"frame_indices"` for debugging
-
-  - [ ] Implement `collate_fn`:
-    - [ ] Stack sequences into batch:
-      - [ ] `[B,N,1,H_s,W_s]` (depth)
-      - [ ] `[B,N,3,H_rgb,W_rgb]` if using RGB
-      - [ ] `[B,N,1,H_s,W_s]` uncertainty if present
-
-- [ ] DataLoader testing:
-  - [ ] Iterate a few batches, print shapes
-  - [ ] Confirm no NaNs, shapes match config
+# Phase 1 — Precomputation (Teacher Depth + Motion)
+- [ ] Create script: scripts/precompute_unidepth_depth.py
+  - [ ] decode frames (optional stride)
+  - [ ] compute intrinsics for resized inputs
+  - [ ] run UniDepthV2 → save depth + uncertainty + camera prompts
+  - [ ] downsample RGB to match depth-grid if needed
+  - [ ] compute optical flow at LOW RES ONLY (for gating)
+  - [ ] compute occlusion masks (fw/bw consistency)
+- [ ] Build dataset manifest (.json or .pkl):
+  - [ ] frame paths
+  - [ ] depth paths
+  - [ ] uncertainty
+  - [ ] intrinsics
+  - [ ] flow paths (optional)
+  - [ ] occlusion masks
+- [ ] Quick viewer tool:
+  - [ ] show RGB / teacher depth / uncertainty
+  - [ ] check ranges + continuity
 
 ---
 
-## Phase 3 – SSM Residual Smoother Model
-
-### 3.1 Optional Feature Encoder (Low-Res RGB / Aux Cues)
-
-- [ ] Implement `videomamba_smoother/models/feature_encoder.py`:
-
-  - [ ] Small CNN (e.g. few Conv + ReLU + pool layers) that:
-    - [ ] Takes low-res RGB `[B,N,3,H_rgb,W_rgb]`
-    - [ ] Outputs feature maps `[B,N,C_f,H_s,W_s]` aligned with low-res depth grid
-  - [ ] Optionally accept:
-    - [ ] Concatenated channels of:
-      - [ ] depth_teacher
-      - [ ] RGB
-      - [ ] uncertainty
-      - [ ] basic motion cue (e.g. abs difference between frames)
-
-- [ ] Test:
-  - [ ] Forward random batch, confirm shapes
-
-### 3.2 Mamba SSM Smoother Core
-
-- [ ] Implement `videomamba_smoother/models/ssm_smoother.py`:
-
-  - [ ] Design decision: operate on **per-spatial-location time series**:
-    - [ ] Input depth: `[B,N,1,H_s,W_s]`
-    - [ ] Optional features: `[B,N,C_f,H_s,W_s]`
-    - [ ] Concatenate along channel: `[B,N,1+C_f,H_s,W_s]`
-
-  - [ ] Flatten spatial dimensions into tokens:
-    - [ ] Reshape to `[B, N, C_in, H_s*W_s]`
-    - [ ] Permute to `[B * H_s * W_s, N, C_in]` for SSM over time
-
-  - [ ] Mamba block stack:
-    - [ ] `class SmootherSSM(nn.Module):`
-      - [ ] Several layers of:
-        - [ ] LayerNorm over channels
-        - [ ] Mamba/SSM core (sequence length = N)
-        - [ ] Small FFN
-        - [ ] Residual connections
-
-  - [ ] Output residual ΔD:
-    - [ ] SSM outputs `[B*H_s*W_s, N, C_out]`
-    - [ ] Map to scalar residual per token via Linear → `[B*H_s*W_s, N, 1]`
-    - [ ] Reshape back to `[B,N,1,H_s,W_s]`
-    - [ ] Final depth:
-      - [ ] `D_refined = D_teacher_low + ΔD`
-
-  - [ ] API:
-    - [ ] `forward(depth_teacher, feat=None) -> depth_refined, residual`
-    - [ ] Where:
-      - [ ] `depth_teacher`: `[B,N,1,H_s,W_s]`
-      - [ ] `feat` (optional): `[B,N,C_f,H_s,W_s]`
-
-- [ ] Tests:
-  - [ ] Forward pass on random data:
-    - [ ] Check `D_refined` shape matches `depth_teacher` shape
-    - [ ] Ensure no NaNs, gradients flow
+# Phase 2 — Dataset & Temporal Window Sampling
+- [ ] transforms.py:
+  - [ ] resize/pad with intrinsics update
+  - [ ] ensure depth scale preserved on resize
+  - [ ] generate RGB-low features aligned to depth grid
+- [ ] dataset_video.py:
+  - [ ] sliding windows of length N
+  - [ ] overlap To
+  - [ ] insert keyframes Tk spaced by Δk
+  - [ ] load depth, uncertainty, RGB-low, flow masks
+  - [ ] output shapes:
+        depth:  [B, N, 1, Hs, Ws] float32
+        rgb:    [B, N, 3, Hr, Wr] float32 in [0,1]
+        uncert: [B, N, 1, Hs, Ws] float32
+        flow:   [B, N, 2, Hs, Ws] float32 (optional)
+- [ ] Add 20% chance temporal reversal augmentation
+- [ ] Verify:
+  - [ ] shapes correct
+  - [ ] zero NaNs
+  - [ ] intrinsics scale correct
+  - [ ] windows align with keyframes
 
 ---
 
-## Phase 4 – Losses & Training Loop for Smoother
-
-### 4.1 Anchor-to-Teacher Loss (L_close)
-
-- [ ] Implement `videomamba_smoother/losses/anchor_to_teacher.py`:
-
-  - [ ] `anchor_loss(D_refined, D_teacher, uncertainty=None, log_space=True)`:
-    - [ ] If `log_space`: use `|log(D_refined + eps) - log(D_teacher + eps)|`
-    - [ ] Weight by uncertainty (if available) or use uniform weights
-    - [ ] High overall weight (primary guardrail: do NOT deviate too far)
-
-### 4.2 Temporal Smoothness / Consistency Loss (L_temp)
-
-- [ ] Implement `videomamba_smoother/losses/temporal_smooth.py`:
-
-  - [ ] Compute finite differences over time:
-    - [ ] `ΔD_refined[t] = D_refined[t+1] - D_refined[t]`
-    - [ ] Option A:
-      - [ ] Penalize deviation from teacher temporal gradient:
-        - [ ] `L_temp = |ΔD_refined - ΔD_teacher|`
-    - [ ] Option B:
-      - [ ] Penalize flicker directly on refined depth:
-        - [ ] `L_temp = |ΔD_refined|` in **static** regions
-
-  - [ ] Use static-motion mask if/when you have optical flow:
-    - [ ] Less penalty where motion is large (objects genuinely moving)
-
-### 4.3 Total Loss
-
-- [ ] In `train_smoother.py`:
-
-  - [ ] Compute:
-    - [ ] `L_close` from anchor loss (high weight)
-    - [ ] `L_temp` from temporal smoothness
-    - [ ] Optional regularizers (e.g. smoothness across space)
-
-  - [ ] Combine:
-    - [ ] `L_total = λ_close * L_close + λ_temp * L_temp + ...`
-    - [ ] Choose λ such that:
-      - [ ] `λ_close` dominates (protect per-frame accuracy)
-      - [ ] `λ_temp` encourages smoother videos but can’t drag you far from teacher
-
-  - [ ] Run optimizer:
-    - [ ] AdamW or Adam over SSM + feature encoder
-    - [ ] Learning rate scheduler
-
-- [ ] Training loop checklist:
-  - [ ] Load batch from DataLoader
-  - [ ] Forward through feature encoder (optional)
-  - [ ] Forward through SSM smoother:
-    - [ ] `D_refined, residual = model(D_teacher, feat)`
-  - [ ] Compute losses, `loss.backward()`
-  - [ ] `optimizer.step()`, `optimizer.zero_grad()`
-  - [ ] Log metrics every few steps
+# Phase 3 — Temporal Refiner Model (SSM Residual)
+- [ ] Inputs:
+  - teacher depth (downsampled)
+  - RGB-low (optional)
+  - flow-gating mask (optional) shaped [B, N, 1, Hs, Ws], values ∈ [0,1], 0 = ignore temporal loss, 1 = fully trust
+  - uncertainty map
+  - time encodings
+- [ ] Architecture:
+  - [ ] Spatial encoder (small CNN) for local patches
+  - [ ] Depth-aware spatial mixing:
+    - depth-conditioned dilated conv OR
+    - shallow bilateral-like conv OR
+    - shallow cross-attention (depth keys, rgb queries)
+  - [ ] Temporal core:
+    - Mamba/VMamba SSM applied per spatial location
+    - maintain linear scaling with N
+  - [ ] Output:
+    - residual ΔD
+    - clamp ΔD in forward (soft during training, tunable α/β, depth-aware; see Phase 6 for formula; can tighten at inference if needed)
+    - refined depth = teacher + ΔD
+- [ ] Mixed precision:
+  - [ ] fp16 or bf16
+  - [ ] selective fp32 for stability if needed
 
 ---
 
-## Phase 5 – Inference Integration & VR Pipeline
-
-### 5.1 Offline Smoother Inference Script
-
-- [ ] Implement `inference_smoother.py`:
-
-  - [ ] Inputs:
-    - [ ] `<video_path>`
-    - [ ] `--output_depth_path`
-    - [ ] `--long_edge`, `--stride`, etc.
-
-  - [ ] Steps:
-    - [ ] Decode video frames
-    - [ ] Compute intrinsics
-    - [ ] Run UniDepthV2 per frame (or load precomputed depth)
-    - [ ] Downsample depth to SSM resolution
-    - [ ] Form sequences `[N,1,H_s,W_s]`
-    - [ ] Run SSM smoother to get `D_refined`
-    - [ ] Upsample refined depth back to full resolution (if needed)
-    - [ ] Save final refined depth maps:
-      - [ ] e.g. one `.npy` per frame or a packed tensor/video
-
-  - [ ] Optional:
-    - [ ] Output side-by-side visualization:
-      - [ ] Teacher vs Refined depth videos
-
-### 5.2 Hook into VR Stereo Pipeline
-
-- [ ] Decide where in your pipeline you consume depth:
-  - [ ] E.g., for right-eye inpainting / reprojection / stereo consistency
-
-- [ ] Replace “raw UniDepth depth” with “SSM-refined depth”
-  - [ ] Ensure metric units are preserved
-  - [ ] Validate temporal stability in VR playback
+# Phase 4 — Losses (Motion-Aware, No Flow Warp)
+- [ ] Teacher-anchored close loss:
+  - L1 or L2 on log-depth difference (log(D + ε), ε ≈ 1e-3)
+  - weight by calibrated uncertainty
+- [ ] Temporal consistency:
+  - match ∂(log D)/∂t between refined frames
+  - avoid raw-depth gradients (worse stability)
+- [ ] Flow/occlusion gating:
+  - downweight temporal loss in occluded or very fast-motion regions
+- [ ] Residual regularization:
+  - small L1 on ΔD magnitude to prevent drift
+- [ ] Optional photometric warp:
+  - warp RGB using refined depth + intrinsics
+  - low weight
+  - gated by occlusion
+- [ ] Monitor:
+  - ratio of L_close : L_temp : L_res
+  - ΔD norms per batch
+  - any tendency toward ΔD → 0 collapse
+  - any oversmoothing
 
 ---
 
-## Phase 6 – Evaluation & Ablations
-
-- [ ] Collect evaluation clips:
-  - [ ] Indoor + outdoor, different motion patterns
-  - [ ] Some VR-like camera motions (head bob, parallax)
-
-- [ ] Compare:
-  - [ ] UniDepth per frame vs UniDepth + SSM smoother:
-    - [ ] Per-frame error vs any available pseudo-GT (if you generate synthetic GT later)
-    - [ ] Temporal flicker metrics:
-      - [ ] Frame-to-frame variance on static regions
-      - [ ] Qualitative: watch depth videos in slow motion
-
-- [ ] Ablations:
-  - [ ] Turn off SSM (ΔD = 0) and confirm baseline = UniDepth
-  - [ ] Try different λ_close / λ_temp
-  - [ ] Try including vs excluding RGB-based features
-  - [ ] Try different temporal window sizes N
-
-- [ ] Stop condition:
-  - [ ] Accept smoother as “better than or equal to UniDepth” when:
-    - [ ] Per-frame metrics are **no worse** than teacher
-    - [ ] Temporal flicker visibly reduced on key sequences
+# Phase 5 — Training Loop
+- [ ] Match inference pattern (window N, overlap To, Tk keyframes, Δk)
+- [ ] Random window starts; random resolutions / aspect ratios
+- [ ] Optimizer: AdamW; LR schedule: cosine; grad clip; amp on; EMA of weights
+- [ ] Checkpoint by temporal metric; log ΔD norms and loss components
 
 ---
+
+# Phase 6 — Inference Pipeline
+- [ ] inference_smoother.py:
+  - [ ] decode frames
+  - [ ] compute intrinsics
+  - [ ] optionally reuse cached teacher depths/flow
+  - [ ] create windows (N, To, Tk, Δk)
+  - [ ] run refiner in fp16/bf16
+  - [ ] blend overlapping windows with quadratic weighting:
+        w = (1 - |pos - 0.5| * 2)^2
+  - [ ] apply keyframe influence with temporal decay:
+        weight = exp(-Δt / τ)
+  - [ ] flow-gating mask expected shape [B, N, 1, Hs, Ws], values ∈ [0,1], 0 = ignore temporal loss, 1 = fully trust
+  - [ ] monitor scale drift over long clips (e.g., median depth on static regions); optional light drift penalty/alert
+  - [ ] upsample refined depth to full resolution (with intrinsics); optionally edge-aware/guided upsampling (guided by teacher depth or RGB) to preserve edges
+  - [ ] clamp ranges
+  - [ ] residual clamp configurable (soft during training, optional hard at inference):
+        |ΔD| ≤ max(α·D_teacher, β), tunable α/β; loosen when teacher uncertainty is high; tighter in confident/static regions
+  - [ ] export:
+        per-frame .npy
+        16-bit PNG optional
+        visualization: teacher vs refined video
+- [ ] Use CUDA graphs for speed (optional)
+
+---
+
+# Phase 7 — Evaluation
+- [ ] Per-frame metrics (vs pseudo-GT or synthetic):
+  - δ thresholds
+  - AbsRel
+  - RMSE
+  - “do-no-harm” vs teacher per-frame metrics
+- [ ] Temporal metrics:
+  - static-mask MAD variance
+  - flow-warped SSIM / LPIPS
+  - T-SCIN: LPIPS on temporal gradients
+- [ ] Baselines to beat:
+  - raw UniDepth
+  - EMA
+  - temporal bilateral
+- [ ] Qualitative:
+  - slow-motion depth comparisons
+  - edge stability on moving objects
+  - scene-wide flicker check
+- [ ] Success criteria:
+  - lower flicker
+  - zero or extremely tiny regression on per-frame metrics
+
+---
+
+# Phase 8 — Stereo & VR Integration
+- [ ] Feed refined metric depth to stereo warping (left → right)
+- [ ] Validate metric consistency with known baselines
+- [ ] Evaluate:
+  - reprojection error left→right
+  - reprojection error right→left
+  - left-right inverse-consistency score
+- [ ] Verify:
+  - no temporal pop during VR playback
+  - no depth-scale drift between windows
+  - improved stereo stability vs raw UniDepth
+
+---
+
+# Risks & Notes
+- Model may collapse to ΔD→0 without uncertainty weighting or teacher jitter
+- Over-smoothing risk in high-motion zones → flow-gated temporal loss is critical
+- Never apply global depth rescaling — metric scale is sacred
+- Flow should ONLY be gating, never supervision

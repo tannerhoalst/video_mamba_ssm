@@ -1,0 +1,41 @@
+\begin{table}[t]
+    \centering
+    \caption{\textbf{Loss ablations.} $\mathcal{L}_{\mathrm{EG-SSI}}$ refers to either employing or not the proposed Edge-Guided Normalized loss; $\mathbf{O}_{\mathcal{L}_\mathrm{con}}$ indicates the output there the geometry consistency loss is applied to.}
+    \vspace{-1em}
+    \label{tab:results:ablations_loss}
+    \resizebox{\linewidth}{!}{%
+    \begin{tabular}{lcc|cccc}
+    \toprule
+    & \multirow{2}{*}{$\mathcal{L}_{\mathrm{EG-SSI}}$} & \multirow{2}{*}{$\mathbf{O}_{\mathcal{L}_\mathrm{con}}$} & \multicolumn{4}{c}{{Zero-shot Test}}\\
+     & & & $\mathrm{\delta_1}\uparrow$ & $\mathrm{SI_{\log}}\downarrow$ & $\mathrm{F_A}\uparrow$ & $\mathrm{\rho_A}\uparrow$\\
+    \midrule
+    1 & \xmark & $\mathbf{D|E}$ & $54.5$ & $16.3$ & $56.0$ & $77.9$\\
+    2 & \xmark & $\mathbf{Z}$   & $55.3$ & $16.2$ & $56.1$ & $78.2$\\
+    3 & \cmark & $\mathbf{Z}$   & $60.0$ & $15.3$ & $57.9$ & $79.8$\\
+    \bottomrule
+    \end{tabular}%
+    }
+\vspace{-1em}
+\end{table}
+
+
+\begin{table}[t]
+    \centering
+    \caption{\textbf{Model ablations.} The ``Model'' column refers to architecture and training strategy employed. ``V1'' is the original UniDepth, while ``V2'' is the proposed \ourmodel. ``Cond'' specifies whether the camera-prompting mechanism is present or not.}
+    \vspace{-1em}
+    \label{tab:results:ablations_version}
+    \resizebox{\linewidth}{!}{%
+    \begin{tabular}{lcc|cccc}
+    \toprule
+    & \multirow{2}{*}{\textbf{Model}} & \multirow{2}{*}{\textbf{Cond}} & \multicolumn{4}{c}{{Zero-shot Test}}\\
+     & & & $\mathrm{\delta_1}\uparrow$ & $\mathrm{SI_{\log}}\downarrow$ & $\mathrm{F_A}\uparrow$ & $\mathrm{\rho_A}\uparrow$\\
+    \midrule
+    1 & V1 & \xmark & $50.1$ & $18.0$ & $50.8$ & $76.7$\\
+    2 & V1 & \cmark & $54.5$ & $16.4$ & $56.1$ & $77.1$\\
+    3 & V2 & \xmark & $49.3$ & $18.4$ & $49.2$ & $76.6$\\
+    4 & V2 & \cmark & $54.5$ & $16.3$ & $56.0$ & $77.9$\\
+    \bottomrule
+    \end{tabular}%
+    }
+\vspace{-1em}
+\end{table}

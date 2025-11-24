@@ -1,0 +1,132 @@
+% CVPR 2024 Paper Template; see https://github.com/cvpr-org/author-kit
+
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+%%%%%%%%% PAPER TYPE  - PLEASE UPDATE FOR FINAL VERSION
+\usepackage{cvpr}              % To produce the CAMERA-READY version
+%\usepackage[review]{cvpr}      % To produce the REVIEW version
+% \usepackage[pagenumbers]{cvpr} % To force page numbers, e.g. for an arXiv version
+
+% Import additional packages in the preamble file, before hyperref
+\input{preamble}
+
+% It is strongly recommended to use hyperref, especially for the review version.
+% hyperref with option pagebackref eases the reviewers' job.
+% Please disable hyperref *only* if you encounter grave issues, 
+% e.g. with the file validation for the camera-ready version.
+%
+% If you comment hyperref and then uncomment it, you should delete *.aux before re-running LaTeX.
+% (Or just hit 'q' on the first LaTeX run, let it finish, and you should be clear).
+\definecolor{cvprblue}{rgb}{0.21,0.49,0.74}
+\usepackage[pagebackref,breaklinks,colorlinks,citecolor=cvprblue]{hyperref}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+
+% Include other packages here, before hyperref.
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{bbm}
+\usepackage{multirow}
+\usepackage{textcomp}
+
+% Support for easy cross-referencing
+\usepackage[capitalize]{cleveref}
+\crefname{section}{Sec.}{Secs.}
+\Crefname{section}{Section}{Sections}
+\Crefname{table}{Table}{Tables}
+\crefname{table}{Tab.}{Tabs.}
+
+\def\eg{\emph{e.g.}} 
+\def\Eg{\emph{E.g.}}
+\def\ie{\emph{i.e.}} 
+\def\Ie{\emph{I.e.}}
+\def\cf{\emph{c.f.}} 
+\def\Cf{\emph{C.f.}}
+\def\etc{\emph{etc.}} 
+\def\vs{\emph{v.s.}}
+\def\wrt{w.r.t.} 
+\def\dof{d.o.f.}
+\def\etal{\emph{et al.}}
+
+
+%%%%%%%%% PAPER ID  - PLEASE UPDATE
+\def\paperID{9309} % *** Enter the Paper ID here
+\def\confName{CVPR}
+\def\confYear{2025}
+
+\newcommand*{\affaddr}[1]{#1} 
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+
+\newcommand{\name}{Video Depth Anything}
+
+
+\begin{document}
+
+%%%%%%%%% TITLE - PLEASE UPDATE
+\title{Video Depth Anything: Consistent Depth Estimation for Super-Long Videos}
+
+
+\author{
+Sili Chen \quad 
+Hengkai Guo$^{\dagger}$  \quad 
+Shengnan Zhu \quad 
+Feihu Zhang \quad \\
+Zilong Huang \quad 
+Jiashi Feng \quad 
+Bingyi Kang$^{\dagger}$ \vspace{2mm} \\
+\affaddr{ByteDance} \\
+\small{\href{https://videodepthanything.github.io/}{\ttfamily videodepthanything.github.io}}
+}
+
+%\blfootnote{$^\dagger$Corresponding author.}
+
+% \author{First Author\\
+% Institution1\\
+%ByteDance $^\dagger$ {\tti1.org}
+% % For a paper whose authors are all at the same institution,
+% % omit the following lines up until the closing ``}''.
+% % Additional authors and addresses can be added with ``\and'',
+% % just like the second author.
+% % To save space, use either the email address or home page, not both
+% \and
+% Second Author\\
+% Institution2\\
+% First line of institution2 address\\
+% {\tt\small secondauthor@i2.org}
+% }
+% \maketitle
+
+\twocolumn[\maketitle\vspace{0em}\input{figures/teaser}\bigbreak]
+
+% \footnotetext[1]{~$^\dagger$Corresponding author.}
+\footnotetext{~$^\dagger$Corresponding author.}
+
+
+\input{sec/0_abstract}    
+\input{sec/1_intro} 
+\input{sec/2_related_work}
+\input{sec/3_method}
+\input{sec/4_experiments}
+\input{sec/5_conclusion}
+%\newpage
+
+
+%%%%%%%%% REFERENCES
+{\small
+\bibliographystyle{ieee_fullname}
+\bibliography{egbib}
+}
+\input{sec/X_suppl}
+
+
+
+\end{document}

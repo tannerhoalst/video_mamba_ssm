@@ -1,0 +1,20 @@
+\begin{table*}[]
+\centering
+\resizebox{0.9\linewidth}{!}{
+\begin{tabular}{lcccccccc}
+\toprule
+\centering
+\multirow{2}{*}{Method / Metrics} & \multirow{2}{*}{Params(M)} & \multirow{2}{*}{\# Video Training Data(M)} & \multicolumn{2}{c}{KITTI(110)~\cite{geiger2013vision}} & \multicolumn{2}{c}{Bonn(110)~\cite{palazzolo2019iros}} & \multicolumn{2}{c}{Scannet(90)~\cite{dai2017scannet}} \\ 
+\cmidrule(r){4-9} 
+& & & AbsRel~(↓) & $\delta_1$~(↑) & AbsRel~(↓) & $\delta_1$~~(↑) & AbsRel~(↓) & $\delta_1$~~(↑) \\
+\midrule 
+DepthCrafter & 2156.7 & 10.5\raisebox{0.5ex}{\texttildelow}40.5 & 0.111  & 0.885  & 0.066  & \underline{0.979}  & 0.125  & 0.848 \\
+DepthAnyVideo & 1422.8 & 6 & \textbf{0.073}  & \textbf{0.957}  & \textbf{0.051}  & \textbf{0.981}  & \underline{0.112}  & \underline{0.883} \\
+% VDA-S (Ours) & 0.085  & 0.941  & 0.061  & 0.966  & 0.104  & 0.893 \\
+VDA-L (Ours) & 381.8 & 0.55 & \underline{0.079}  & \underline{0.950}  & \underline{0.053}  & 0.972  & \textbf{0.075}  & \textbf{0.954} \\
+% VDA-L (Ours) & 381.8 & 0.55 & \underline{0.079}  & \underline{0.952}  & \underline{0.052}  & 0.976  & \textbf{0.075}  & \textbf{0.955} \\
+\bottomrule
+\end{tabular}}
+\caption{\textbf{Zero-shot short video depth estimation results}. We compare with DepthCrafter~\cite{hu2024depthcrafter} and DepthAnyVideo~\cite{depthanyvideo} in short video depth benchmark. ``VDA-L'' denotes our model with ViT-Large backbone. The default inference resolution of our model is set to 518 pixels on the short side, maintaining the aspect ratio. The \textbf{best} and the \underline{second best} results are highlighted.}
+\label{tab::short_video_benchmark}
+\end{table*}

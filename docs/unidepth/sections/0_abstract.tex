@@ -1,0 +1,17 @@
+\begin{abstract}
+    Accurate monocular metric depth estimation (MMDE) is crucial to solving downstream tasks in 3D perception and modeling.
+    However, the remarkable accuracy of recent MMDE methods is confined to their training domains.
+    These methods fail to generalize to unseen domains even in the presence of moderate domain gaps, which hinders their practical applicability.
+    We propose a new model, \ourmodel, capable of reconstructing metric 3D scenes from solely single images across domains.
+    Departing from the existing MMDE paradigm, \ourmodel directly predicts metric 3D points from the input image at inference time without any additional information, striving for a universal and flexible MMDE solution.
+    In particular, \ourmodel implements a self-promptable camera module predicting a dense camera representation to condition depth features.
+    Our model exploits a pseudo-spherical output representation, which disentangles the camera and depth representations.
+    In addition, we propose a geometric invariance loss that promotes the invariance of camera-prompted depth features.
+    \ourmodel improves its predecessor UniDepth model via a new edge-guided loss which enhances the localization and sharpness of edges in the metric depth outputs, a revisited, simplified and more efficient architectural design, and an additional uncertainty-level output which enables downstream tasks requiring confidence.
+    Thorough evaluations on ten depth datasets in a zero-shot regime consistently demonstrate the superior performance and generalization of \ourmodel.
+    Code and models are available at: \href{https://github.com/lpiccinelli-eth/unidepth}{github.com/lpiccinelli-eth/UniDepth}.
+\end{abstract}
+    
+\begin{IEEEkeywords}
+    Depth estimation, 3D estimation, camera prediction, geometric perception, foundation model.
+\end{IEEEkeywords}

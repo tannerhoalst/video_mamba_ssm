@@ -1,0 +1,25 @@
+\begin{table}[]
+\centering
+\resizebox{0.9\linewidth}{!}{
+\begin{tabular}{lccc}
+\toprule
+\centering
+%& \multirow{2}{*}{Variants} & \multicolumn{2}{c}{Video Depth} & \multicolumn{1}{c}{TAE} \\ 
+%\cmidrule(r){3-5} 
+%& & AbsRel~(↓) & d1~(↑) & tae~(↓) \\
+Loss & AbsRel~(↓) & $\delta_1$~~(↑) & TAE~(↓) \\
+\midrule 
+VideoAlign & \textbf{0.151}  & \underline{0.846}  & 1.326\\
+VideoAlign+SSI & \textbf{0.151}  & \textbf{0.848}  & 1.207 \\
+OPW~\cite{wang2023neural}+SSI & 0.182  & 0.771  & 0.918  \\
+SE+SSI & 0.160  & 0.836  & \textbf{0.753}  \\
+TGM+SSI (Ours) & 0.166  & 0.832  & \underline{0.767}  \\
+\bottomrule
+\end{tabular}}
+\caption{\textbf{Ablation studies on the effectiveness of the temporal losses.} 
+``VideoAlign'' denotes the spatial loss with a shared scale-shift alignment applied to the entire video. ``SSI'' is the image-level spatial loss used in~\cite{depth_anything_v2}. ``OPW'' refers to the optical flow-based warping loss described in~\cite{wang2023neural}.
+``SE'' refers to the stable error as introduced in Equation~\ref{eq:stable_loss}. ``TGM'' represents our proposed temporal gradient matching loss.
+}
+\label{tab::loss_ablation}
+\vspace{-18pt}
+\end{table}

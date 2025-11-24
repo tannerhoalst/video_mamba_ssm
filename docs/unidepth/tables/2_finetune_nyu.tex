@@ -1,0 +1,24 @@
+\begin{table}[t]
+    \centering
+    \caption{\textbf{Comparison on NYU validation set.} All models are trained on NYU. The first 4 are trained only on NYU. The last 4 are fine-tuned on NYU.}
+    \vspace{-1em}
+    \label{tab:results:nyu_ft}
+    \resizebox{\columnwidth}{!}{
+    \begin{tabular}{l|ccc|ccc}
+        \toprule
+        \multirow{2}{*}{\textbf{Method}} & $\mathrm{\delta}_{1}$ & $\mathrm{\delta}_{2}$ & $\mathrm{\delta}_{3}$ & $\mathrm{A.Rel}$ & $\mathrm{RMS}$ & $\mathrm{Log}_{10}$\\
+         & \multicolumn{3}{c|}{\textit{Higher is better}} & \multicolumn{3}{c}{\textit{Lower is better}}\\
+        \toprule
+        BTS~\cite{Lee2019bts} & $88.5$ & $97.8$ & $99.4$ & $10.9$ & $0.391$ & $0.046$\\
+        AdaBins~\cite{Bhat2020adabins} & $90.1$ & $98.3$ & $99.6$ & $10.3$ & $0.365$ & $0.044$\\
+        NeWCRF~\cite{Yuan2022newcrf} & $92.1$ & $99.1$ & $\scnd{99.8}$ & $9.56$ & $0.333$ & $0.040$\\
+        iDisc~\cite{piccinelli2023idisc} & $93.8$ & $99.2$ & $\scnd{99.8}$ & $8.61$ & $0.313$ & $0.037$\\
+        ZoeDepth~\cite{bhat2023zoedepth} & $95.2$ & $\scnd{99.5}$ & $\scnd{99.8}$ & $7.70$ & $0.278$ & $0.033$\\
+        Metric3Dv2~\cite{hu2024metric3dv2} & $\best{98.9}$ & $\best{99.8}$ & $\best{100}$ & $\scnd{4.70}$ & $\scnd{0.183}$ & $\best{0.020}$\\
+        DepthAnythingv2~\cite{yang2024da2} & $98.4$ & $\mathbf{99.8}$ & $\mathbf{100}$ & $5.60$ & $0.206$ & $\scnd{0.024}$\\
+        \midrule 
+        \ourmodel & $\scnd{98.8}$ & $\best{99.8}$ & $\best{100}$ & $\best{4.68}$ & $\best{0.180}$ & $\best{0.020}$\\ % 262250
+        \bottomrule
+    \end{tabular}}
+    \vspace{-1em}
+\end{table}

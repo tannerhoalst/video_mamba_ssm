@@ -1,0 +1,31 @@
+\begin{figure*}[t]
+    \renewcommand{\arraystretch}{1}
+    \centering
+    \small
+    \hspace{-5pt}
+    \begin{tabular}{cc|ccc}
+        \multirow{1}{*}[0.5in]{\rotatebox[origin=c]{90}{KITTI}}
+        & \includegraphics[width=0.22\linewidth]{figures/assets/edges/kitti_rgb.pdf}
+        & \includegraphics[width=0.22\linewidth]{figures/assets/edges/kitti_v1.pdf}
+        & \includegraphics[width=0.22\linewidth]{figures/assets/edges/kitti_no_loss.pdf}
+        & \includegraphics[width=0.22\linewidth]{figures/assets/edges/kitti_v2.pdf}\\
+        
+        \multirow{1}{*}[0.5in]{\rotatebox[origin=c]{90}{Sintel}}
+        & \includegraphics[width=0.22\linewidth]{figures/assets/edges/sintel_rgb.pdf}
+        & \includegraphics[width=0.22\linewidth]{figures/assets/edges/sintel_v1.pdf}
+        & \includegraphics[width=0.22\linewidth]{figures/assets/edges/sintel_no_loss.pdf}
+        & \includegraphics[width=0.22\linewidth]{figures/assets/edges/sintel_v2.pdf}\\
+        
+        % \multirow{1}{*}[0.5in]{\rotatebox[origin=c]{90}{ETH3D}}
+        % & \includegraphics[width=0.145\linewidth]{figures/assets/edges/eth_rgb.pdf}
+        % & \includegraphics[width=0.145\linewidth]{figures/assets/edges/eth_v1.pdf}
+        % & \includegraphics[width=0.145\linewidth]{figures/assets/edges/eth_no_loss.pdf}
+        % & \includegraphics[width=0.145\linewidth]{figures/assets/edges/eth_v2.pdf} \\
+        & RGB & UniDepth~\cite{piccinelli2024unidepth} & UniDepthV2 w/o $\mathcal{L}_\mathrm{EG-SSI}$ & \ourmodel\\
+    \end{tabular}
+    \vspace{-1em}
+    \caption{\textbf{Comparisons of predicted edges.} Each row displays the input RGB image and the 2D depth maps predicted by compared methods, color-coded with the \textit{magma reverse} colormap with a range between 0 and 50 meters. Better viewed on a screen and zoomed in.
+    }
+    \label{fig:results:edges}
+    \vspace{-1em}
+\end{figure*}

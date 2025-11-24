@@ -1,0 +1,276 @@
+\documentclass[lettersize,journal]{IEEEtran}
+\usepackage{svg}
+
+% \usepackage{pgfplots}
+% \pgfplotsset{compat=newest}
+% \usepackage{tikz}
+\usepackage{textcomp}
+\usepackage{stfloats}
+
+
+% *** CITATION PACKAGES ***
+\usepackage{cite}
+
+
+% *** MATH PACKAGES ***
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{algorithm}
+\usepackage{mathtools}
+
+
+% *** SUBFIGURE PACKAGES ***
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+
+
+
+% *** PDF, URL AND HYPERLINK PACKAGES ***
+%
+% \usepackage{url}
+% url.sty was written by Donald Arseneau. It provides better support for
+% handling and breaking URLs. url.sty is already installed on most LaTeX
+% systems. The latest version and documentation can be obtained at:
+% http://www.ctan.org/pkg/url
+% Basically, \url{my_url_here}.
+
+\usepackage{times}
+\usepackage{epsfig}
+
+% Include other packages here, before hyperref.
+% \usepackage[utf8x]{inputenc}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{booktabs,siunitx} % better tables
+\usepackage{makecell}
+\usepackage{enumitem}
+\usepackage[percent]{overpic}
+\usepackage[caption=false]{subfig}
+\usepackage{rotating}
+\usepackage[misc]{ifsym}
+\usepackage{xspace}
+\usepackage{pifont}
+\usepackage{multirow}
+\usepackage{bm}
+\usepackage[accsupp]{axessibility} 
+\usepackage{tabularx}
+% \usepackage{subcaption}
+\usepackage[noend]{algpseudocode}
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[pagebackref=true,breaklinks=true,colorlinks,bookmarks=false]{hyperref}
+\usepackage[capitalize]{cleveref}
+
+\Crefname{section}{Section}{Sections}
+\Crefname{table}{Table}{Tables}
+\crefname{section}{Sec.}{Secs.}
+\crefname{table}{Tab.}{Tabs.}
+
+% New/updated commands.
+
+% Math.
+\if@mathematic
+   \def\vec#1{\ensuremath{\mathchoice
+                     {\mbox{\boldmath$\displaystyle\mathbf{#1}$}}
+                     {\mbox{\boldmath$\textstyle\mathbf{#1}$}}
+                     {\mbox{\boldmath$\scriptstyle\mathbf{#1}$}}
+                     {\mbox{\boldmath$\scriptscriptstyle\mathbf{#1}$}}}}
+\else
+   \def\vec#1{\ensuremath{\mathchoice
+                     {\mbox{\boldmath$\displaystyle#1$}}
+                     {\mbox{\boldmath$\textstyle#1$}}
+                     {\mbox{\boldmath$\scriptstyle#1$}}
+                     {\mbox{\boldmath$\scriptscriptstyle#1$}}}}
+\fi
+
+% Detectable updates with colored text.
+\newcommand{\blue}[1]{\textcolor{black}{#1}}
+
+% Math.
+\newcommand{\vect}[1]{\mathbf{#1}}
+\newcommand{\vecnorm}[1]{\left\|#1\right\|}
+\newtheorem{thm}{Theorem}
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{definition}{Definition}
+
+% Language
+\newcommand{\etal}{\textit{et al}.\ }
+\newcommand{\ie}{\textit{i}.\textit{e}.\ }
+\newcommand{\eg}{\textit{e}.\textit{g}.\ }
+\newcommand{\wrt}{\textit{w}.\textit{r}.\textit{t}.\ }
+\newcommand{\vs}{\textit{vs}.\ }
+
+% Tables.
+\newcommand\ver[1]{\rotatebox[origin=c]{90}{#1}}
+\newcommand{\fl}[1]{\multicolumn{1}{c}{#1}}
+\newcommand{\yes}{\checkmark}
+\newcommand{\no}{$\times$}
+
+% Best results.
+\newcommand{\best}[1]{\mathbf{#1}}
+\newcommand{\scnd}[1]{\underline{#1}}
+
+% Figures.
+\newcommand{\fnn}[1]{$\scriptstyle^{#1}$}
+
+% Paragraphs instead of subsections.
+\newcommand{\PAR}[1]{\vskip4pt \noindent{\bf #1~}}
+
+% Names.
+\newcommand*{\ourmodel}{UniDepthV2\@\xspace}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+
+% Hyphenation.
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+
+
+\begin{document}
+
+\title{UniDepthV2:\\Universal Monocular Metric Depth Estimation\\Made Simpler}
+
+
+\author{
+Luigi~Piccinelli,
+Christos~Sakaridis,
+Yung-Hsu~Yang,
+Mattia~Segu,
+Siyuan~Li,
+Wim~Abbeloos,
+and~Luc~Van~Gool% <-this % stops a space
+% note need leading \protect in front of \\ to get a newline within \thanks as
+% \\ is fragile and will error, could use \hfil\break instead.
+\IEEEcompsocitemizethanks{
+\IEEEcompsocthanksitem L.~Piccinelli, C.~Sakaridis, Y-H..~Yang, M.~Segu, and S.~Li are with ETH Z\"urich, Switzerland.
+\IEEEcompsocthanksitem W.~Abbeloos is with Toyota Motor Europe, Belgium.
+\IEEEcompsocthanksitem L.~Van Gool is with ETH Z\"urich, Switzerland, and with INSAIT, Sofia University, Bulgaria.}% <-this % stops an unwanted space
+}
+
+% note the % following the last \IEEEmembership and also \thanks - 
+% these prevent an unwanted space from occurring between the last author name
+% and the end of the author line. i.e., if you had this:
+% 
+% \author{....lastname \thanks{...} \thanks{...} }
+%                     ^------------^------------^----Do not want these spaces!
+%
+% a space would be appended to the last name and could cause every name on that
+% line to be shifted left slightly. This is one of those "LaTeX things". For
+% instance, "\textbf{A} \textbf{B}" will typeset as "A B" not "AB". To get
+% "AB" then you have to do: "\textbf{A}\textbf{B}"
+% \thanks is no different in this regard, so shield the last } of each \thanks
+% that ends a line with a % and do not let a space in before the next \thanks.
+% Spaces after \IEEEmembership other than the last one are OK (and needed) as
+% you are supposed to have spaces between the names. For what it is worth,
+% this is a minor point as most people would not even notice if the said evil
+% space somehow managed to creep in.
+
+
+
+% The paper headers
+% \markboth{IEEE Transactions on Pattern Analysis and Machine Intelligence,~Vol.~xx, No.~xx, August~2025}%
+% {Piccinelli \MakeLowercase{\textit{et al.}}: UniDepthV2: Universal Metric Monocular Depth Estimation Made Simpler}
+
+% \IEEEpubid{0000--0000/00\$00.00~\copyright~2021 IEEE}
+% Remember, if you use this you must call \IEEEpubidadjcol in the second
+% column for its text to clear the IEEEpubid mark.
+
+\maketitle
+
+\input{sections/0_abstract}
+
+\input{sections/1_introduction}
+
+\input{sections/2_rel_work}
+
+\input{sections/3_method}
+
+\input{sections/4_experiments}
+
+\input{sections/5_conclusion}
+
+% use section* for acknowledgment
+\section*{Acknowledgments}
+This work is funded by Toyota Motor Europe via the research project TRACE-Z\"urich. Additional thanks to Lavinia Recchioni for her editing and unwavering support.
+
+% \newpage
+
+% trigger a \newpage just before the given reference
+% number - used to balance the columns on the last page
+% adjust value as needed - may need to be readjusted if
+% the document is modified later
+% \IEEEtriggeratref{8}
+% The "triggered" command can be changed if desired:
+%\IEEEtriggercmd{\enlargethispage{-5in}}
+
+% References section.
+
+\bibliographystyle{IEEEtran}
+\bibliography{IEEEabrv,refs}
+
+% biography section
+
+\vspace{-2em}
+
+\begin{IEEEbiography}[{\includegraphics[width=1in,clip,keepaspectratio]{images/luigi.pdf}}]{Luigi Piccinelli} is a Ph.D. candidate at ETH Z\"urich, Computer Vision Lab, supervised by Prof. Luc Van Gool and Dr. Christos Sakaridis.
+His research focuses on 3D perception, particularly advancing generalization for ill-posed problems such as monocular depth estimation, both from single images and videos.
+He has also explored tracking and domain adaptation.
+He obtained his B.Sc. and M.Sc. degrees in Electrical Engineering from University of Bologna and ETH Zurich, respectively.
+\end{IEEEbiography}
+
+\vspace{-2em}
+
+\begin{IEEEbiography}[{\includegraphics[width=1in,clip,keepaspectratio]{images/christos.pdf}}]{Christos Sakaridis} is a lecturer at ETH Z\"urich and a senior postdoctoral researcher at Computer Vision Lab of ETH Z\"urich.
+The focus of his research is on semantic and geometric visual perception, involving multiple domains, visual conditions, and visual or non-visual modalities. Since 2021, he has been the Principal Engineer in TRACE Zurich, a large-scale project on computer vision for autonomous cars and robots.
+He received the ETH Z\"urich Career Seed Award in 2022.
+He obtained his PhD from ETH Z\"urich in 2021, having worked at Computer Vision Lab.
+Before that, he received his MSc in Computer Science from ETH Z\"urich in 2016 and his Diploma in Electrical and Computer Engineering from National Technical University of Athens in 2014.
+\end{IEEEbiography}
+
+% \vspace{-2em}
+
+\begin{IEEEbiography}[{\includegraphics[width=1in,clip,keepaspectratio]{images/roy.pdf}}]{Yung-Hsu Yang} is a Ph.D. student at ETH Z\"urich supervised by Prof. Marc Pollefeys. My research interests include scene understanding and 3D Object Detection and Tracking. He obtained my M.Sc. and B.Sc. degrees in Electrical Engineering at National Tsing Hua University supervised by Prof. Min Sun.
+Previously, he worked with Dr. Samuel Rota Bulo and Dr. Peter Kontschieder in dense prediction tasks.
+\end{IEEEbiography}
+
+\vspace{-2em}
+
+\begin{IEEEbiography}[{\includegraphics[width=1in,clip,keepaspectratio]{images/mattia.pdf}}]{Mattia Segu} is a Ph.D. candidate at the Computer Vision Lab at ETH Z\"urich, co-supervised by Prof. Luc Van Gool and Prof. Bernt Schiele as a member of the Max Planck ETH Center for Learning Systems.
+His research focuses on advancing multiple object tracking methods that can learn end-to-end from long video sequences, adapt dynamically, and leverage limited annotations in a self-supervised fashion.
+Currently, he is a student researcher at Google, contributing to Federico Tombari's team.
+Additionally, he has worked on domain generalization, uncertainty estimation, and foundation models for object tracking and depth estimation.
+\end{IEEEbiography}
+
+\vspace{-2em}
+
+\begin{IEEEbiography}[{\includegraphics[width=1in,clip,keepaspectratio]{images/siyuan.pdf}}]{Siyuan Li} is a Ph.D. student at the Computer Vision Laboratory, ETH Z\"urich, Switzerland, supervised by Dr. Martin Danelljan and Prof. Luc Van Gool.
+His research focuses on computer vision and machine learning, with an emphasis on visual perception, open-world understanding, and multi-object tracking. He is particularly interested in developing scalable and generalizable models for autonomous driving and robotics.
+His work has been published in top-tier computer vision conferences, including CVPR, ECCV, and ICCV.
+\end{IEEEbiography}
+
+\vspace{-2em}
+
+\begin{IEEEbiography}[{\includegraphics[width=1in,clip,keepaspectratio]{images/wim.pdf}}]{Wim Abbeloos}
+He earned an MSc in Applied Engineering from the University of Antwerp (2011) and then worked as a researcher and PhD student at both InViLab (University of Antwerp) and EAVISE (KU Leuven), focusing on 3D object detection, unsupervised 3D object discovery, and pose estimation for robotics. Subsequently, he joined Toyota Motor Europe (Belgium) in 2018, where he currently coordinates and manages research collaborations with top research institutes in Europe in the fields of computer vision and artificial intelligence, including automated driving and other application areas. Additionally, he supports the transfer and integration of the developed knowledge into future applications and products.
+\end{IEEEbiography}
+
+\vspace{-2em}
+
+\begin{IEEEbiography}[{\includegraphics[width=1in,clip,keepaspectratio]{images/luc.pdf}}]{Luc Van Gool} is a full professor for Computer Vision at INSAIT and professor emeritus at ETH Z\"urich and the KU Leuven. He has authored over 900 papers.
+He has been a program committee member of several major computer vision conferences (\eg ICCV’05, ICCV’11, and ECCV’14).
+His main interests include 3D reconstruction and modeling, object recognition, and autonomous driving.
+He received several best paper awards (\eg David Marr Prize ’98, Best Paper CVPR’07). He received the Koenderink Award in 2016 and the ``Distinguished Researcher'' nomination by the IEEE Computer Society in 2017.
+In 2015 he also received the 5-yearly Excellence Prize by the Flemish Fund for Scientific Research. He was the holder of an ERC Advanced Grant (VarCity).
+Currently, he leads computer vision research for autonomous driving in the context of the Toyota TRACE labs and has an extensive collaboration with Huawei on image and video enhancement.
+\end{IEEEbiography}
+
+
+% Can be used to pull up biographies so that the bottom of the last one
+% is flush with the other column.
+% \enlargethispage{-5in}
+
+
+
+\end{document}

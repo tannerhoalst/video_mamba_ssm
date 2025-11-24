@@ -1,0 +1,8 @@
+\begin{figure*}[ht]
+    \centering
+    \includegraphics[width=1.0\linewidth]{figures/assets/overview3.pdf}
+    \vspace{-2em}
+    \caption{\textbf{Model Architecture.} \ourmodel utilizes solely the input image to generate the 3D output ($\mathbf{O}$). It bootstraps a dense camera prediction ($\mathbf{C}$) from the Camera Module, injecting prior knowledge on scene scale into the Depth Module via a cross-attention layer per resolution, with 4 layers in total. The camera representation corresponds to azimuth and elevation angles. The geometric invariance loss ($\mathcal{L}_{\mathrm{con}}$) enforces consistency between geometric camera-aware output tensors from different geometric augmentations ($\mathcal{T}_1$, $\mathcal{T}_2$). The depth output ($\mathbf{Z}_{\log}$) \blue{is obtained through an FPN-based decoder that gradually upsamples the feature maps and injects multi-resolution information}. The final output is the concatenation of the camera and depth tensors ($\mathbf{C} || \mathbf{Z}_{\log}$), creating two independent optimization spaces for $\mathcal{L}_{\lambda MSE}$. \blue{The depth output is supervised with the proposed Edge-guided Normalized L1-loss $\mathcal{L}_{EG-SSI}$. In addition, \ourmodel computes a prediction uncertainty ($\mathbf{\Sigma}$) which is supervised with an L1-loss on the error in log space between predicted and ground-truth depth.}}
+    \label{fig:results:overview}
+    \vspace{-1em}
+\end{figure*}

@@ -77,4 +77,41 @@ python3 visualize_depth_video.py \
 
 
 
+• You’ll still get very high quality, because the full-res teacher stays intact; the SSM only adds a small
+  residual and then you upsample that residual back to full res. The main trade-off is:
 
+  - What the coarse SSM can’t “see” at low res, it can’t correct (tiny high-frequency flicker/edges). But it
+    also can’t damage the teacher’s fine detail; it mostly smooths low/mid-frequency flicker.
+  - Upsampling the residual itself (bilinear) is usually fine. If you want extra safety on edges, use edge-
+    aware upsampling guided by the teacher (e.g., bilateral guided by depth gradients) so you don’t blur
+    discontinuities.
+  - If you notice missed fine corrections, you can run the SSM at a slightly higher grid (e.g., 1/4 instead
+    of 1/8) or add a very light edge-aware refinement after upsampling.
+
+  Net: the output remains full-res; quality loss is minimal, and the SSM mainly reduces flicker without
+  harming the teacher’s per-frame detail.
+
+
+  • Edge-aware upsampling options (simple to implement):
+
+  1. Joint bilateral upsample (guided by RGB or teacher depth edges)
+
+  - Take the coarse refined depth (Hs×Ws) and bilinearly upsample to full size.
+  - Run a joint bilateral filter where the guide is either full-res RGB or the teacher depth:
+    D_out(p) = sum_q w_s(p,q)·w_r(guide(p),guide(q))·D_up(q) / sum_q w_s·w_r
+    where w_s is a spatial Gaussian, w_r is a range Gaussian over the guide values.
+
+  2. Guided filter
+
+  - Use He et al. guided filter with guide = RGB or teacher depth; fast O(1) box filtering style. Inputs:
+    full-res guide, coarse-upsampled depth.
+
+  3. Affinity-based (edge-aware weights from gradients)
+
+  - Compute edge weights from guide gradients: w_x = exp(-|∂guide/∂x|/σ), w_y similarly.
+  - Apply a small number of weighted smoothing steps on the upsampled depth using those weights to prevent
+    crossing edges.
+
+  Practical pick: start with guided filter (fast, few lines in OpenCV/torchvision equivalents), guide
+  by teacher depth or RGB. If you want something even simpler, joint bilateral with a small kernel and
+  reasonable σ_color/σ_space works fine.

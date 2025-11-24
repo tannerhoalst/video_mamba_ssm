@@ -1,0 +1,108 @@
+\section{Experiments}
+\label{sec:experiments}
+
+
+\subsection{Experimental Setup}
+\label{ssec:experiments:setup}
+\blue{\PAR{Data.} The training data is the combination of 24 publicly available datasets: A2D2~\cite{geyer2020a2d2}, Argoverse2~\cite{2021argoverse2}, ARKit-Scenes~\cite{baruch2021arkitscenes}, BEDLAM~\cite{black2023bedlam}, BlendedMVS~\cite{yao2020blendedmvs}, DL3DV~\cite{ling2024dl3dv}, DrivingStereo~\cite{yang2019drivingstereo}, DynamicReplica~\cite{karaev2023dynamicreplica}, EDEN~\cite{le2021eden}, HOI4D~\cite{liu2022hoi4d}, HM3D~\cite{ramakrishnan2021habitat}, Matterport3D~\cite{chang2017matterport3d}, Mapillary-PSD~\cite{Lopez2020mapillary}, MatrixCity~\cite{li2023matrixcity}, MegaDepth~\cite{li2018megadepth}, NianticMapFree~\cite{arnold2022mapfree}, PointOdyssey~\cite{zheng2023pointodyssey}, ScanNet~\cite{dai2017scannet}, ScanNet++~\cite{yeshwanthliu2023scannetpp}, TartanAir~\cite{wang2020tartanair}, Taskonomy~\cite{zamir2018taskonomy}, Waymo~\cite{sun2020waymo}, and WildRGBD~\cite{xia2024wildrgbd} for a total of 16M images.
+We evaluate the generalizability of models by testing them on 8 datasets not seen during training, grouped in different domains that are defined based on indoor or outdoor settings. 
+The indoor group corresponds to the validation splits of SUN-RGBD~\cite{Song2015sunrgbd}, IBims~\cite{koch2022ibims}, TUM-RGBD~\cite{sturm12tumrgbd}, and HAMMER~\cite{jung2022hammer}, while the outdoor group comprises ETH3D~\cite{schoeps2017eth3d}, Sintel~\cite{Butler2012sintel}, DDAD~\cite{Guizilini2020ddad}, and NuScenes~\cite{nuscenes}.}
+
+\blue{\PAR{Evaluation Details.} All methods have been re-evaluated with a fair and consistent pipeline.
+In particular, we do not exploit any test-time augmentations and we utilize the same weights for all zero-shot evaluations.
+We use the checkpoint corresponding to the zero-shot model for each method, \ie not fine-tuned on KITTI or NYU.
+The metrics utilized in the main experiments are $\mathrm{\delta_1^{SSI}}$, $\mathrm{F_{A}}$, and $\mathrm{\rho_{A}}$.
+$\mathrm{\delta_1}$ measures the depth estimation performance.
+$\mathrm{F_{A}}$ is the area under the curve (AUC) of F1-score~\cite{ornek20222metrics} up to $1/20$ of the datasets' maximum depth and evaluates 3D estimation accuracy.
+$\mathrm{\rho_{A}}$ evaluates the camera performance and is the AUC of the average angular error of camera rays up to 15$^{\circ}$.
+We do not use parametric evaluation of \eg{}focal length, since it is a less flexible metric across diverse camera models and perfectly unrectified images.
+Moreover, we present the fine-tuning ability of \ourmodel by training the final checkpoint on KITTI and NYU-Depth V2 and evaluating in-domain, as per standard practice.}
+
+\PAR{Implementation Details.} \ourmodel is implemented in PyTorch~\cite{pytorch} and CUDA~\cite{nickolls2008cuda}.
+For training, we use the AdamW~\cite{Loshchilov2017adamw} optimizer ($\beta_1=0.9$, $\beta_2=0.999$) with an initial learning rate of $5\times{}10^{-5}$.
+The learning rate is divided by a factor of 10 for the backbone weights for every experiment and weight decay is set to $0.1$.
+We exploit Cosine Annealing as learning rate and weight decay scheduler to one-tenth starting from 30\% of the whole training.
+\blue{We run 300k optimization iterations with a batch size of 128.
+The training time amounts to 6 days on 16 NVIDIA 4090 with half precision.
+The dataset sampling procedure follows a weighted sampler, where the weight of each dataset is its number of scenes.
+Our augmentations are both geometric and photometric, \ie random resizing, cropping, and translation for the former type, and brightness, gamma, saturation, and hue shift for the latter.
+We randomly sample the image ratio per batch between 2:1 and 1:2.}
+Our ViT~\cite{Dosovitskiy2020VIT} backbone is initialized with weights from DINO-pre-trained~\cite{oquab2023dinov2} models.
+For the ablations, we run 100k training steps with a ViT-S backbone, with the same training pipeline as for the main experiments.
+
+
+\subsection{Comparison with The State of The Art}
+\label{ssec:experiments:comparison}
+
+\input{tables/1a_results_in}
+\input{tables/1b_results_out}
+\input{figures/3_shape_invariance}
+
+
+\blue{We evaluate our method on eight zero-shot validation sets, covering both indoor and outdoor scenes, as shown in \Cref{tab:results:indoor} and \Cref{tab:results:outdoor}, respectively. Our model performs better than or at least on par with all baselines, even outperforming methods that require ground-truth camera parameters at inference time, such as \cite{yin2023metric3d, hu2024metric3dv2}.
+Notably, \ourmodel excels in 3D estimation, as reflected in the $\mathrm{F_A}$ metric, where it achieves a consistent improvement ranging from 0.5\% to 18.1\% over the second-best method. Additionally, it outperforms UniDepth~\cite{piccinelli2024unidepth} in nearly all cases, except for the $\mathrm{\rho_A}$ metric on IBims-1, DDAD, and NuScenes.
+This demonstrates that our proposed version is a significant step forward in both performance and efficiency.
+However, the camera parameter estimation ($\mathrm{\rho_A}$) sees only marginal improvements, indicating that the limited diversity of training cameras remains a challenge that could be addressed with additional camera-only training, as suggested in~\cite{bochkovskii2024depthpro}.
+\Cref{tab:results:nyu_ft} and \Cref{tab:results:kitti_ft} show results for models fine-tuned on the NYU and KITTI training sets and evaluated on their respective validation splits, following standard protocols.
+Fine-tuning performance serves as an indicator of a model's ability to specialize to specific downstream tasks and domains.
+\ourmodel effectively adapts to new domains and outperforms methods that were pre-trained on large, diverse datasets before fine-tuning on NYU or KITTI, such as~\cite{bhat2023zoedepth, hu2024metric3dv2, yang2024da2},
+This is particularly evident in the outdoor setting (KITTI), as shown in \Cref{tab:results:kitti_ft}.
+As detailed in \Cref{ssec:method:design}, our training strategy incorporates variable image aspect ratios and resolutions within the same distributed batch.
+Combined with camera conditioning and invariance learning, this approach enhances the model’s robustness to changes in input image shape.
+\Cref{fig:results:shape_invariance} quantifies this effect: the y-axis represents normalized metric accuracy ($\mathrm{\delta}_1$ scaled by the method’s maximum value), while the x-axis varies the image shape.
+The normalization ensures a consistent scale across models.
+\ourmodel is almost invariant to image shape, demonstrating that it can effectively trade off resolution for speed without sacrificing accuracy, as clearly illustrated in \Cref{fig:results:shape_invariance}.}
+
+
+\input{tables/2_finetune_nyu}
+\input{tables/3_finetune_kitti}
+\input{figures/4_confidence}
+
+
+\subsection{Ablation Studies}
+\label{ssec:experiments:ablations}
+
+The importance of each new component introduced in \ourmodel in \cref{sec:method} is evaluated by ablating the method in \blue{Tables \ref{tab:results:ablations_arch}, \ref{tab:results:ablations_loss}, and \ref{tab:results:ablations_version}.}
+All ablations exploit the predicted camera representation, if not stated otherwise.
+\blue{\Cref{tab:results:ablations_arch} evaluates the impact of various architectural modifications compared to UniDepth~\cite{piccinelli2024unidepth}, analyzing their effects on both performance and efficiency.
+\Cref{tab:results:ablations_loss} assesses the importance of the proposed loss function (\cref{ssec:method:egssi}) and examines the effect of applying the geometric invariance loss originally introduced in UniDepth~\cite{piccinelli2024unidepth} (\cref{ssec:method:consistency}) in different spaces.
+The rationale behind our design choices is to maintain simplicity while maximizing effectiveness.
+Additionally, in \Cref{tab:results:ablations_version} we analyze the role of camera conditioning and report results for the original UniDepth under the same training and evaluation setup as our method for a direct comparison.
+The evaluation is based on four key metrics: $\mathrm{\delta}_1$, which measures metric depth accuracy; $\mathrm{SI}_{\log}$, which assesses scale-invariant scene geometry; $\mathrm{F_A}$, which captures the 3D estimation capability; and $\mathrm{\rho_A}$, which evaluates monocular camera parameter estimation.
+All reported metrics correspond to the aggregated zero-shot performance across datasets, as detailed in \cref{ssec:experiments:setup}.}
+
+\input{figures/5_edges}
+\input{tables/4_v1_to_v2}
+\input{tables/5_ablations}
+
+\blue{\PAR{Architecture.} \Cref{tab:results:ablations_arch} outlines the key modifications that transform the original UniDepth~\cite{piccinelli2024unidepth} architecture into \ourmodel.
+The first major change is the removal of spherical harmonics (SH)-based encoding, which is computationally inefficient.
+Instead, we revert to standard Sine encoding (row 2).
+While the difference in performance is minimal in our setup, we hypothesize that the encoding’s impact diminishes as the model benefits from larger and more diverse training data across different cameras.
+Next, we eliminate the attention mechanism in row 3 due to its high computational cost.
+This removal results in a significant performance drop, \eg{}-4.3\% for $\mathrm{\delta}_1$, but yields a greater than 2x improvement in efficiency.
+In row 4, we replace the pure MLP-based decoder with ResNet blocks, introducing spatial $3\times3$ convolutions.
+This modification enhances performance by leveraging local spatial structure while inducing a minimal impact on efficiency.
+Finally, row 5 integrates a multi-resolution feature fusion from the encoder to the decoder, following an FPN-style design.
+This final architecture significantly reduces computational cost while preserving overall performance: the final model (row 5) achieves similar performance to the original UniDepth (row 1) while requiring only one-third of the computation.}
+\blue{\PAR{$\mathcal{L}_{\mathrm{EG-SSI}}$ Loss.} The effectiveness of the proposed $\mathcal{L}_{\mathrm{EG-SSI}}$ loss, detailed in \cref{ssec:method:egssi}, is evaluated in row 2 \vs row 3 of \Cref{tab:results:ablations_loss}.
+Introducing this loss results in a 4.7\% improvement in $\mathrm{\delta}_1$ and a 1.8\% improvement in $\mathrm{F_A}$, demonstrating its contribution to both metric accuracy and 3D estimation.
+Interestingly, despite $\mathcal{L}_{\mathrm{EG-SSI}}$ not explicitly supervising camera parameter estimation, the $\mathrm{\rho_A}$ metric also shows improvement.
+This suggests that the loss contributes to a less noisy training process, leading to better feature representations in the encoder.
+A qualitative comparison of the impact of $\mathcal{L}_{\mathrm{EG-SSI}}$ is presented in \cref{fig:results:edges}.
+The difference between the third and fourth columns highlights the visual impact of the proposed loss, particularly in refining depth discontinuities.
+Additionally, the comparison between the second and third columns illustrates the combined effect of architectural changes and increased data diversity, showing improved reconstruction of finer details, such as body parts that were previously smoothed or missed.}
+\blue{\PAR{$\mathcal{L}_{\mathrm{con}}$ Output Space.} \ourmodel introduces multiple instances of camera-conditioned depth features $\mathbf{D}|\mathbf{E}$, corresponding to different decoder resolutions, as described in \cref{ssec:method:design}.
+This contrasts with the original UniDepth~\cite{piccinelli2024unidepth}, which relied on a single conditioning point.
+Given this architectural shift, we argue that deep conditioning may not be optimal.
+Features at different resolutions encode varying levels of abstraction, and enforcing deep conditioning introduces additional design freedom.
+\Cref{tab:results:ablations_loss} investigates where to apply the consistency loss ($\mathcal{L}_{\mathrm{con}}$) from~\cite{piccinelli2024unidepth}: either directly in the output space ($\mathbf{Z}$, row 2) or within the camera-conditioned features at each scale ($\mathbf{D}|\mathbf{E}$, row 1).
+The results indicate minimal differences from applying the loss directly in the output space. Therefore, based on Occam's razor, we adopt the simpler and more effective design from row 2 as the final approach.}
+\blue{\PAR{Conditioning Impact.} As previously explored in~\cite{piccinelli2024unidepth}, we analyze the impact of our proposed camera conditioning in \Cref{tab:results:ablations_version}.
+This ablation includes both UniDepth and \ourmodel under the same conditions—without $\mathcal{L}_{\mathrm{EG-SSI}}$ and without invariance applied to deep features ($\mathbf{D}|\mathbf{E}$).
+The results show that conditioning has a even stronger positive effect for \ourmodel, as evidenced by comparing row 3 \vs row 4 against the comparison of row 1 \vs row 2.}
+\blue{\PAR{Confidence.} The confidence measure introduced in \cref{ssec:method:design} is evaluated on three zero-shot datasets, as shown in \cref{fig:results:confidence}.
+The y-axis represents the normalized $\mathrm{RMSE}$, computed as $\mathrm{RMSE}$ divided by its per-dataset value at $x = 0$, while the x-axis corresponds to the confidence quantile.
+For each quantile, the evaluation considers only pixels whose confidence exceeds the given threshold.
+Ideally, confidence should be negatively correlated with error: if the confidence estimate is reliable, higher-confidence regions should exhibit lower $\mathrm{RMSE}$.
+More specifically, \cref{fig:results:confidence} validates how the predicted confidence of \ourmodel negatively correlates with the error, thus showing its reliability.}

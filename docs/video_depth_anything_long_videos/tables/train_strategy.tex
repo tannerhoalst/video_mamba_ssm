@@ -1,0 +1,19 @@
+\begin{table}[]
+\centering
+\resizebox{0.9\linewidth}{!}{
+\begin{tabular}{lccccc}
+\toprule
+\centering
+\multirow{2}{*}{Datasets} & \multicolumn{2}{c}{Image-datasets} & \multicolumn{3}{c}{Video-datasets} \\ 
+\cmidrule(r){2-6} 
+& AbsRel~(↓) & $\delta_1$~(↑) & AbsRel~(↓) & $\delta_1$~(↑) & TAE~(↓) \\
+\midrule 
+Video & 0.180 & 0.876 & 0.145 & 0.849 & 0.761  \\
+Video + Image & \textbf{0.167} & \textbf{0.883} & \textbf{0.142} & \textbf{0.852} & \textbf{0.742}  \\
+% Video + Image & \textbf{0.167} & \textbf{0.883} & \textbf{0.154} & 0.830 & \textbf{0.767}  \\
+\bottomrule
+\end{tabular}}
+\caption{\textbf{Ablation studies on the effectiveness of the image dataset distillation.} ``Video'' denotes training using only video datasets. ``Video + Image'' merges video and image datasets for training using image-level distillation~\cite{depth_anything_v2}.}
+\label{tab::train_strategy_ablation}
+\vspace{-18pt}
+\end{table}

@@ -1,0 +1,26 @@
+\section{Related Work}
+\label{sec:relwork}
+
+\input{figures/1_overview}
+
+\PAR{Metric and Scale-Agnostic Depth Estimation.}
+It is crucial to distinguish Monocular Metric Depth Estimation (MMDE) from scale-agnostic, namely up-to-a-scale, monocular depth estimation.
+MMDE SotA approaches typically confine training and testing to the same domain.
+However, challenges arise, such as overfitting to the training scenario leading to considerable performance drops in the presence of minor domain gaps,
+% potential covariate shift issues, 
+often overlooked in benchmarks like NYU-Depthv2~\cite{silberman2012nyu} (NYU) and KITTI~\cite{Geiger2012kitti}.
+On the other hand, scale-agnostic depth methods, pioneered by MiDaS~\cite{ranftl2020midas}, OmniData~\cite{eftekhar2021omnidata}, and LeReS~\cite{yin2021leres}, show robust generalization by training on extensive datasets.
+\blue{The paradigm has been elevated to another level by repurposing depth-conditioned generative methods for RGB to RGB-conditioned depth generative methods~\cite{ke2024marigold} or large-scale semi-supervised pre-training as in the DepthAnything series~\cite{yang2024da1, yang2024da2}.}
+The limitation of all these methods lies in the absence of a metric output, hindering practical usage in downstream applications.
+
+\PAR{Monocular Metric Depth Estimation.}
+The introduction of end-to-end trainable neural networks in MMDE, pioneered by \cite{Eigen2014}, marked a significant milestone, also introducing the optimization process through the Scale-Invariant log loss ($\mathrm{SI}_{\log}$).
+Subsequent developments witnessed the emergence of advanced networks, ranging from convolution-based architectures~\cite{Fu2018Dorn, Laina2016, Liu2015, Patil2022p3depth} to transformer-based approaches~\cite{Yang2021, Bhat2020adabins, Yuan2022newcrf, piccinelli2023idisc}.
+Despite impressive achievements on established benchmarks, MMDE models face challenges in zero-shot scenarios, revealing the need for robust generalization against appearance and geometry domain shifts.
+
+\PAR{General Monocular Metric Depth Estimation.}
+Recent efforts focus on developing MMDE models~\cite{bhat2023zoedepth, guizilini2023zerodepth, yin2023metric3d} for general depth prediction across diverse domains.
+These models often leverage camera awareness, either by directly incorporating external camera parameters into computations~\cite{facil2019camconvs, guizilini2023zerodepth} or by normalizing the shape or output depth based on intrinsic properties, as seen in~\cite{Lee2019bts, Lopez2020mapillary, yin2023metric3d, hu2024metric3dv2}.
+\blue{A new paradigm recently emerged~\cite{piccinelli2024unidepth, bochkovskii2024depthpro}, where the goal is to directly estimate the 3D scene from the input image \emph{without any} additional information other than the RGB input.
+Our approach fits in the latter new paradigm, namely universal MMDE: we do not require any additional prior information at test time, such as access to camera information.}
+

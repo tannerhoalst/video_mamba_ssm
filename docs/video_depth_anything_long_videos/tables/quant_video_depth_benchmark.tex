@@ -1,0 +1,27 @@
+\begin{table*}[]
+\centering
+\resizebox{0.9\linewidth}{!}{
+\begin{tabular}{lcccccccccccc}
+\toprule
+\centering
+\multirow{2}{*}{Method / Metrics} & \multicolumn{2}{c}{KITTI~\cite{geiger2013vision}} & \multicolumn{2}{c}{Scannet~\cite{dai2017scannet}} & \multicolumn{2}{c}{Bonn~\cite{palazzolo2019iros}} & \multicolumn{2}{c}{NYUv2~\cite{Silberman:ECCV12}} & \multicolumn{2}{c}{Sintel~\cite{Butler_Wulff_Stanley_Black_2012}(\raisebox{0.5ex}{\texttildelow}50 frames)} & \multicolumn{1}{c}{Scannet (170 frames\cite{depthanyvideo})} & \multirow{2}{*}{$\delta_1$ Rank} \\ 
+\cmidrule(r){2-12} 
+& AbsRel~(↓) & $\delta_1$~(↑) & AbsRel~(↓) & $\delta_1$~~(↑) & AbsRel~(↓) & $\delta_1$~~(↑) & AbsRel~(↓) & $\delta_1$~~(↑) & AbsRel~(↓) & $\delta_1$~~(↑) & TAE~(↓) \\
+\midrule 
+DAv2-L~\cite{depth_anything_v2} & 0.137  & 0.815  & 0.150  & 0.768  & 0.127  & 0.864  & 0.094  & 0.928  & 0.390 & 0.541 & 1.140 & 5.5 \\
+NVDS~\cite{wang2023neural} & 0.233  & 0.614  & 0.207  & 0.628  & 0.199  & 0.674  & 0.217  & 0.598  & 0.408  & 0.464  & 
+ 2.176 & 8.5 \\
+NVDS~\cite{wang2023neural} + DAv2-L~\cite{depth_anything_v2} & 0.227  & 0.617  & 0.194  & 0.658  & 0.191  & 0.700  & 0.184  & 0.679  & 0.449  & 0.503  & 2.536 & 7.7 \\
+ChoronDepth~\cite{chronodepth} & 0.243 & 0.576 & 0.199 & 0.665 & 0.199 & 0.665 & 0.173 & 0.771 & \textbf{0.192} & \underline{0.673} & 1.022 & 6.6 \\
+DepthCrafter~\cite{hu2024depthcrafter} & 0.164  & 0.753  & 0.169  & 0.730  & 0.153  & 0.803  & 0.141  & 0.822  & 0.299  & \textbf{0.695}  & 0.639 & 5.0 \\
+DepthAnyVideo~\cite{depthanyvideo} & -  & -  & -  & -  & -  & -  & -  & -  & 0.405  & 0.659  & 0.967 & - \\
+VDA-S (Ours-Syn) & 0.089          & 0.937             & 0.124             & 0.839             & 0.081             & 0.955             & 0.087             & 0.953             & 0.326             & 0.596 & 0.702          & 4.0 \\
+VDA-L (Ours-Syn) & \textbf{0.083} & \textbf{0.946}    & \textbf{0.087}    & \textbf{0.933}    & \textbf{0.070}    & \textbf{0.961}    & \underline{0.064} & \underline{0.967} & 0.300             & 0.633 & \textbf{0.570} & \textbf{1.7}\\
+VDA-S (Ours)     & 0.086          & 0.942             & 0.110             & 0.876             & 0.083             & 0.950             & 0.077             & 0.959             & 0.339             & 0.584 & 0.703          & 3.9 \\
+VDA-L (Ours)     & \textbf{0.083} & \underline{0.944} & \underline{0.089} & \underline{0.926} & \underline{0.071} & \underline{0.959} & \textbf{0.062}    & \textbf{0.971}    & \underline{0.295} & 0.644 & \textbf{0.570} & \textbf{1.7}\\
+\bottomrule
+\end{tabular}}
+\caption{\textbf{Zero-shot video depth estimation results}. We compare with representative single-image~\cite{depth_anything_v2} and video depth estimation models~\cite{wang2023neural, chronodepth, hu2024depthcrafter, depthanyvideo}. ``VDA-S'' and ``VDA-L'' denote our model with ViT-Small and ViT-Large backbones, respectively. Models denoted with ``-Syn'' are trained exclusively on public datasets, as detailed in supplementary. The \textbf{best} and the \underline{second best} results are highlighted.}
+\label{tab::quant_video_depth_benchmark}
+\vspace{-8pt}
+\end{table*}

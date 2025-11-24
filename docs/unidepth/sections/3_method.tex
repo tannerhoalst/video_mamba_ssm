@@ -1,0 +1,183 @@
+\section{\ourmodel}
+\label{sec:method}
+
+\blue{Most of} the SotA MMDE methods typically assume access to the camera intrinsics, thus blurring the line between pure depth estimation and actual 3D estimation.
+In contrast, \ourmodel aims to create a universal MMDE model deployable in diverse scenarios without relying on any other external information, such as camera intrinsics, thus leading to 3D-space estimation by design.
+However, attempting to directly predict 3D points from a single image without a proper internal representation neglects geometric prior knowledge, \ie perspective geometry, burdening the learning process with re-learning laws of perspective projection from data.
+
+\cref{ssec:method:spherical} introduces a pseudo-spherical representation of the output space to inherently disentangle camera rays' angles from depth.
+In addition, our preliminary studies indicate that depth prediction benefits from prior information on the acquisition sensor, leading to the introduction of a self-prompting camera operation in \cref{ssec:method:camera_module}.
+Further disentanglement at the level of \blue{depth prediction} is achieved through a geometric invariance loss, outlined in \cref{ssec:method:consistency}.
+This loss ensures \blue{depth predictions} remain invariant when conditioned on the bootstrapped camera predictions, promoting robust camera-aware depth predictions.
+\blue{Furthermore, the spatial resolution is enhanced via an edge-guided normalized loss on the depth prediction that forces the network to learn both sharp transitions in depth values and flat surfaces.}
+The overall architecture and the resulting optimization induced by the combination of design choices are detailed in \cref{ssec:method:design}.
+
+
+\subsection{3D Representation}
+\label{ssec:method:spherical}
+
+The general-purpose nature of our MMDE method requires inferring both depth and camera intrinsics to make 3D predictions based only on imagery observations.
+We design the 3D output space presenting a natural disentanglement of the two sub-tasks, namely depth estimation and camera calibration.
+In particular, we exploit the pseudo-spherical representation where the basis is defined by azimuth, elevation, and log-depth, \ie ($\theta$,$\phi$,$z_{\log}$), in contrast to the Cartesian representation ($x$,$y$,$z$).
+The strength of the proposed pseudo-spherical representation lies in the decoupling of camera ($\theta$,$\phi$) and depth ($z_{\log}$) components, ensuring their orthogonality by design, in contrast to the entanglement present in Cartesian representation.
+
+It is worth highlighting that in this output space, the non-parametric dense representation of the camera is mathematically represented as a tensor $\mathbf{C} \in \mathbb{R}^{H \times W \times 2}$, where $H$ and $W$ are the height and width of the input image and the last dimension corresponds to azimuth and elevation values.
+While in the typical Cartesian space, the backprojection involves the multiplication of homogeneous camera rays and depth, the backprojection operation in the proposed representation space accounts for the concatenation of camera and depth representations.
+The pencil of rays are defined as $(\mathbf{r}_1, \mathbf{r}_2, \mathbf{r}_3) = \mathbf{K}^{-1} [\mathbf{u}, \mathbf{v}, \mathbf{1}]^T$, where $\mathbf{K}$ is the calibration matrix, $\mathbf{u}$ and $\mathbf{v}$ are pixel positions in pixel coordinates, and $\mathbf{1}$ is a vector of ones. Therefore, the homogeneous camera rays $(\mathbf{r}_x, \mathbf{r}_y)$ correspond to $(\frac{\mathbf{r}_1}{\mathbf{r}_3}, \frac{\mathbf{r}_2}{\mathbf{r}_3})$.
+\blue{Moreover, this dense camera representation can be embedded via a standard Sine encoding, where the total amount of harmonics is 64 per homogeneous ray dimension, namely 128 channels in total.}
+% Moreover, the angular dense representation can be embedded via the Laplace Spherical Harmonic Encoding (SHE).
+% The camera embedding tensor is defined as $\mathbf{E} = \mathrm{SHE}(\mathbf{C}), \mathbf{E} \in \mathbb{R}^{H \times W \times d}$, where $d$ is the number of harmonics chosen.
+% $\mathrm{SHE}(\cdot)$ computes the set of spherical harmonics, \ie, $\{\mathcal{Y}\}_{l,m}$ with degree $l$ and order $m$, and concatenating along the channel dimension, with $\mathbf{Y}^l_m$ as
+% \begin{equation}
+%     \label{eqn:sht}
+%     Y^l_m(\theta, \phi) = \alpha^l_m \mathcal{P}^l_m(\cos \theta)e^{im\phi},
+% \end{equation}
+% where $\mathcal{P}^l_m$ is the associated Legendre polynomial of degree $l$ and order $m$, and $\alpha^l_m$ is a normalizing constant.
+% In particular, the spherical harmonics on the unit sphere form an orthogonal basis of the spherical manifold and preserve inner products.
+% The total number of harmonics utilized is $81$, resulting from capping the degree $l$ to 8.
+% SHE is utilized as a mathematic sounder choice compared to, \eg the Fourier Transform, to produce the camera embeddings.
+% An alternative solution involves directly optimizing the two tasks: $\mathbf{r}$=($r_x$, $r_y$) as in~\cite{Grossberg2001raxels} and $z_{\log}$, representing homogeneous camera rays and log-depth, respectively.
+% On the other hand, the disentanglement in rays and log-depth can be viewed as an alternative pseudo-spherical representation since these camera rays and angles share a direct relationship.
+% We explore in the supplement this alternative representation, \ie, ($r_x$, $r_y$, $r_z$) and $z_{\log}$.
+
+
+\subsection{Self-Promptable Camera}
+\label{ssec:method:camera_module}
+
+The camera module plays a crucial role in the final 3D predictions since its angular dense output accounts for two dimensions of the output space, namely azimuth and elevation.
+Most importantly, these embeddings prompt the depth module to ensure a bootstrapped prior knowledge of the input scene's global depth scale.
+The prompting is fundamental to avoid mode collapse in the scene scale and to alleviate the depth module from the burden of predicting depth from scratch as the scale is already modeled by camera output.
+
+Nonetheless, the internal representation of the camera module is based on a pinhole parameterization, namely via focal length ($f_x$, $f_y$) and principal point ($c_x$, $c_y$).
+The four tokens conceptually corresponding to the intrinsics are then projected to scalar values, \ie, $\Delta f_x$, $\Delta f_y$, $\Delta c_x$, $\Delta c_y$.
+However, they do not directly represent the camera parameters, but the multiplicative residuals to a pinhole camera initialization, namely $\frac{H}{2}$ for y-components and $\frac{W}{2}$ for x-components, leading to $f_x = \frac{\Delta f_x W}{2}$, $f_y = \frac{\Delta f_y H}{2}$, $c_x = \frac{\Delta c_x W}{2}$, $c_y = \frac{\Delta c_y H}{2}$, leading to invariance towards input image sizes.
+
+Subsequently, a backprojection operation based on the intrinsic parameters is applied to every pixel coordinate to produce the corresponding rays.
+The rays are normalized and thus represent vectors on a unit sphere.
+The critical step involves extracting azimuth and elevation from the backprojected rays, effectively creating a ``dense'' angular camera representation.
+This dense representation undergoes \blue{Sine encoding} to produce the embeddings $\mathbf{E}$.
+The embedded representations are then seamlessly passed to the depth module as a prompt, where they play a vital role as a conditioning factor.
+The conditioning is enforced via a cross-attention layer between \blue{the projected encoder feature maps $\{\mathcal{F}_i\}^{4}_{i=1}$, with $\mathbf{F}_i \in \mathbb{R}^{h \times w \times C}$} and the camera embeddings $\mathbf{E}$ where $(h,w)=(H/14, W/14)$. The camera-prompted depth features $\mathbf{F}_i|\mathbf{E} \in \mathbb{R}^{h \times w \times C}$ are defined as 
+\begin{equation}
+    \mathbf{F}_i|\mathbf{E} = \mathrm{MLP}(\mathrm{CA}(\mathbf{F}_i, \mathbf{E})),
+\end{equation}
+where $\mathrm{CA}$ is a cross-attention block and $\mathrm{MLP}$ is a MultiLayer Perceptron with one $4C$-channel hidden layer.
+
+
+\subsection{Geometric Invariance Loss}
+\label{ssec:method:consistency}
+
+The spatial locations from the same scene captured by different cameras should correspond when the depth module is conditioned on the specific camera.
+To this end, we propose a geometric invariance loss to enforce the consistency of camera-prompted depth features of the same scene from different acquisition sensors.
+In particular, consistency is enforced on features extracted from identical 3D locations.
+
+For each image, we perform $N$ distinct geometrical augmentations, denoted as $\{\mathcal{T}_i\}_{i=1}^N$, with $N=2$ in our experiments. 
+% This operation involves random horizontal translation and image resizing.
+This operation involves sampling a rescaling factor \blue{$r \sim 2^{\mathcal{U}_{[-2, 2]}}$} and a relative translation $t \sim \mathcal{U}_{[-0.1, 0.1]}$, then cropping it to the current step randomly selected input shape.
+This is analogous to sampling a pair of images from the same scene and extrinsic parameters but captured by different cameras.
+Let $\mathbf{C}_i$ and $\mathbf{Z}_i$ describe the predicted camera representation and \blue{camera-aware depth output}, respectively, corresponding to augmentation $\mathcal{T}_i$. 
+It is evident that the camera representations differ when two diverse geometric augmentations are applied, i.e., $\mathbf{C}_i \neq \mathbf{C}_j$ if $\mathcal{T}_i \neq \mathcal{T}_j$. 
+Therefore, the geometric invariance loss can be expressed as
+\begin{equation}
+    \mathcal{L}_{\mathrm{con}}(\mathbf{Z}_1, \mathbf{Z}_2) =\\
+    \lVert \mathcal{T}_2 \circ \mathcal{T}^{-1}_1 \circ (\mathbf{Z}_1) - \mathrm{sg}(\mathbf{Z}_2) \rVert_1,
+\label{eqn:method:selfconst}
+\end{equation}
+where $\mathbf{Z}_i$ represents the depth output after being conditioned by camera prompt $\mathbf{E}_i$, as outlined in \cref{ssec:method:camera_module}, \blue{and decoded}; $\mathrm{sg}(\cdot)$ corresponds to the stop-gradient detach operation needed to exploit $\mathbf{Z}_2$ as pseudo ground truth (GT).
+The bidirectional loss can be computed as: $\frac{1}{2} (\mathcal{L}_{\mathrm{con}}(\mathbf{Z}_1, \mathbf{Z}_2) + \mathcal{L}_{\mathrm{con}}(\mathbf{Z}_2, \mathbf{Z}_1))$.
+It is necessary to apply the geometric invariance loss \blue{on the components that are camera-aware, such as the output depth map.}
+Otherwise, the loss would enforce consistency across features that carry camera information purposely different.
+
+
+\subsection{Edge-Guided Normalized Loss}
+\label{ssec:method:egssi}
+
+\blue{Modern depth estimation methods must balance global scene understanding with local geometric precision.
+While UniDepth excels at the former, it lacks accuracy in local, fine-grained details of the geometry of the depicted scenes. To address this, \ourmodel involves a novel loss function, named Edge-Guided Scale-Shift Invariant Loss ($\mathcal{L}_{\mathrm{EG-SSI}}$), which is explicitly designed to enhance local precision.
+This loss is computed over image patches extracted from regions where the RGB spatial gradient ranks in the top 5\%-quantile, capturing high-contrast areas likely to contain depth discontinuities.
+Patch sizes are randomly sampled between 4\% and 8\% of the input image's smallest dimension.
+By concentrating on these visually salient regions, our model learns to distinguish between genuine geometric discontinuities and misleading high-frequency textures that do not correspond to actual depth changes.
+For instance, structured patterns such as checkerboard textures or repetitive details on flat surfaces can falsely suggest depth variations, leading to hallucinated discontinuities.}
+
+\blue{Our approach discourages such errors by enforcing local consistency between the predicted and ground-truth depth.
+At each selected patch location, we apply a local normalization step where both the predicted depth and ground-truth depth are independently aligned in scale and shift based on the patch’s statistics.
+This ensures that the loss directly measures shape consistency rather than absolute depth values, making it robust to variations in depth scale across different scenes.
+Specifically, our loss function is formulated as:}
+\begin{equation}
+    \mathcal{L}_{\mathrm{EG-SSI}}(\mathbf{D}, \mathbf{D^*}, \Omega) = \sum_{\omega \in \Omega} \left|| \mathcal{N}_\omega (\mathbf{D}_{\omega}) - \mathcal{N}_\omega(\mathbf{D}^*_{\omega})\right||_1,
+\label{eqn:method:egssi}
+\end{equation}
+\blue{where $\mathbf{D}$ and $\mathbf{D}^*$ are the predicted and ground-truth inverse depth, $\Omega$ is the set of extracted RGB patches, and $\mathbf{D}_{\omega}$ represents depth values within patch $\omega$.
+The function $\mathcal{N}_\omega(\cdot)$ denotes the standardization operation via subtracting the median and dividing by the mean absolute deviation (MAD) over the patch $\omega$.}
+% \begin{multline}
+%     \mathcal{L}_{\mathrm{EG-SSI}}(\mathbf{D}, \mathbf{D^*}, \Omega) \\
+%     = \sum_{\omega \in \Omega} \sum_{i \in \omega} \left|\frac{\mathbf{D}_{\omega}(i) - \mathrm{m}(\mathbf{D_{\omega}})}{\mathrm{MAD}(\mathbf{D_{\omega}})} - \frac{\mathbf{D}^*_{\omega}(i) - \mathrm{m}(\mathbf{D^*_{\omega}})}{\mathrm{MAD}(\mathbf{D^*_{\omega}})}\right|,
+% \label{eqn:method:egssi}
+% \end{multline}
+% \blue{where $\mathbf{D}$ and $\mathbf{D}^*$ are the predicted and ground-truth inverse depth, $\Omega$ is the set of extracted RGB patches, and $\mathbf{D}_{\omega}$ represents depth values within patch $\omega$.
+% The functions $\mathrm{m}(\cdot)$ and $\mathrm{MAD}(\cdot)$ denote the median and mean absolute deviation, respectively.}
+\blue{A key advantage of this formulation is that it penalizes two distinct failure cases: (i) regions where the model ignores strong chromatic cues, failing to capture a true depth discontinuity, and (ii) regions where the model incorrectly exploits changes solely in appearance, hallucinating depth discontinuities that do not correspond to actual geometric edges.
+Since random patch extraction is computationally inefficient in standard ML frameworks such as PyTorch, we implement a custom CUDA kernel, accelerating loss computation by 20x.}
+
+\input{figures/2_comparison}
+
+\subsection{Network Design}
+\label{ssec:method:design}
+
+\PAR{Architecture.} Our network, described in \cref{fig:results:overview}, comprises an Encoder Backbone, a Camera Module, and a Depth Module.
+The encoder is ViT-based~\cite{Dosovitskiy2020VIT}, producing features at four different ``scales'', \blue{\ie $\{\mathbf{F}_i\}^{4}_{i=1}$, with $\mathbf{F}_i \in \mathbb{R}^{h \times w \times C}$, where $(h,w) = (\frac{H}{14}, \frac{W}{14})$.}
+
+The four Camera Module parameters are initialized as class tokens present in ViT-style backbones.
+\blue{After this initialization, they are (i) processed via 2 layers of self-attention to obtain the corresponding pinhole parameters which are used to produce} the final dense representation $\mathbf{C}$ as detailed in \cref{ssec:method:camera_module}, and (ii) further embedded to $\mathbf{E}$ \blue{via a Sine encoding.}
+% The encoded features from the Encoder Backbone are passed to the Camera Module as a stack of detached tokens, the encoder class tokens are utilized as camera parameters initialization.
+% The features are processed to obtain the final dense representation $\mathbf{C}$ as detailed in \cref{ssec:method:camera_module}, and further embedded to $\mathbf{E}$ via $\mathrm{SHE}(\cdot)$ outlined in \cref{ssec:method:spherical}.
+% Note that the stop-gradient operation is necessary because of the low variety of effective cameras compared to the image diversity.
+% In fact, the Camera Module component easily overfits and clearly dominates the overall backbone gradient.
+
+% The Depth Module is fed with the encoder features to condition the initial latent features $\mathbf{L} \in \mathbb{R}^{h \times w \times C}$ via one cross-attention layer to obtain the initial depth features, $\mathbf{D}$.
+% The latent feature tensor $\mathbf{L}$ is obtained as the average of the features $\mathbf{F}$ along the $B$ dimension.
+% Furthermore, the depth features are conditioned on the camera prompts $\mathbf{E}$ to obtain $\mathbf{D|E}$ as described in \cref{ssec:method:camera_module}.
+% The camera-prompted depth features are further processed via self-attention layers where the positional encoding utilized is $\mathbf{E}$ and upsampled to produce a multi-scale output.
+\blue{The Depth Module is fed with the four feature maps $\{\mathbf{F}_i\}^{4}_{i=1}$ from the encoder.
+Each feature map $\mathbf{F}_i$ is conditioned on the camera prompts $\mathbf{E}$ to obtain $\mathbf{D|E}$ as described in \cref{ssec:method:camera_module} with a different cross-attention layer.
+The four feature maps are then processed with an FPN-style decoder where the ``lateral'' convolution is transposed convolution to match the ViT resolution to the resolution of the different layers of the FPN.}
+The log-depth prediction $\mathbf{Z}_{\log} \in \mathbb{R}^{H \times W \times 1}$ corresponds to the \blue{last FPN feature map which is upsampled to the original input shape and processed with two convolutional layers.}
+The final 3D output $\mathbf{O} \in \mathbb{R}^{H \times W \times 3}$ is the concatenation of predicted rays and depth, $\mathbf{O} = \mathbf{C} || \mathbf{Z}$, with $\mathbf{Z}$ as element-wise exponentiation of $\mathbf{Z}_{\log}$.
+
+\PAR{Optimization.} The optimization process is guided by a re-formulation of the Mean Squared Error (MSE) loss in the final 3D output space ($\theta$,$\phi$,$z_{\log}$) from \cref{ssec:method:spherical} as:
+\vspace{-4pt}
+\begin{equation}
+    \vspace{-4pt}
+    \begin{split}
+        \mathcal{L}_{\lambda\mathrm{MSE}}(\bm{\varepsilon}) = \|\mathbb{V}[\bm{\varepsilon}]\|_1 + \bm{\lambda}^T(\mathbb{E}[\bm{\varepsilon}]\odot\mathbb{E}[\bm{\varepsilon}]),
+    \end{split}
+    \label{eqn:method:mse}
+\end{equation}
+where $\bm{\varepsilon} = \hat{\mathbf{o}} - \mathbf{o}^* \in \mathbb{R}^3$, $\hat{\mathbf{o}}=(\hat{\theta},\hat{\phi},\hat{z}_{\log})$ is the predicted 3D output, $\mathbf{o}^*=(\theta^*,\phi^*,z_{\log}^*)$ is the GT 3D value, and $\bm{\lambda} = (\lambda_{\theta},\lambda_{\phi},\lambda_z) \in \mathbb{R}^3$ is a vector of weights for each dimension of the output.
+$\mathbb{V}[\bm{\varepsilon}]$ and $\mathbb{E}[\bm{\varepsilon}]$ are computed as the vectors of empirical variances and means for each of the three output dimensions over all pixels, \ie $\{\bm{\varepsilon}^{i}\}_{i=1}^{N}$. 
+Note that if $\lambda_d=1$ for a dimension $d$, the loss represents the standard MSE loss for that dimension. If $\lambda_d<1$, a scale-invariant loss term is added to that dimension if it is expressed in log space, \eg{}for the depth dimension $z_{\log}$, or a shift-invariant loss term is added if that output is expressed in linear space.
+In particular, if only the last output dimension is considered, \ie{}the one corresponding to depth, and $\lambda_z=0.15$ is utilized, the corresponding loss is the standard $\mathrm{SI}_{\log}$.
+In our experiments, we set $\lambda_{\theta}=\lambda_{\phi}=1$ and $\lambda_z=0.15$.
+\blue{In addition, we extended the optimization with the supervision for the uncertainty prediction, defined as an L1 loss between the predicted uncertainty and the detached error in log space between predicted depth ($\mathbf{Z}_{\log}$) and GT depth ($\mathbf{Z}^{*}_{\log}$). More formally,}
+\begin{equation} \label{eqn:loss:uncertainty}
+\mathcal{L}_{\mathrm{L1}} = \lVert \mathbf{\Sigma} - \mathrm{sg}(| \mathbf{Z}_{\log} - \mathbf{Z}^{*}_{\log} |) \rVert_{1},
+\end{equation}
+\blue{with $\mathrm{sg(\cdot)}$ referring to the stop gradient operation.}
+Therefore, the final optimization loss is defined as
+\begin{equation}
+    \begin{split}
+        \mathcal{L} = \mathcal{L}_{\lambda\mathrm{MSE}} + \alpha \mathcal{L}_{\mathrm{con}} + \beta \mathcal{L}_{\mathrm{EG-SSI}} + \gamma \mathcal{L}_{\mathrm{L1}},\\ \text{ with } (\alpha,\beta,\gamma) =(0.1,1.0,0.1).
+    \end{split}
+    \label{eqn:method:loss}
+\end{equation}
+
+The loss defined here serves as a motivation for the designed output representation.
+Specifically, employing a Cartesian representation and applying the loss directly to the output space would result in backpropagation through ($x$, $y$), and $z_{\log}$ errors.
+However, $x$ and $y$ components are derived as $r_x \cdot z$ and $r_y \cdot z$ as detailed in \cref{ssec:method:spherical}.
+Consequently, the gradients of camera components, expressed by ($r_x$, $r_y$), and of depth become intertwined, leading to suboptimal optimization as discussed in~\cref{ssec:experiments:ablations}.
+\blue{Depth estimators often entangle image shape with scene scale by implicitly encoding aspects of the camera parameters within the image dimensions~\cite{yin2023metric3d}.
+This reliance on fixed input shapes can limit their ability to generalize across different image resolutions and aspect ratios.
+In contrast, \ourmodel is designed to be robust to variations in image shape, ensuring that the predicted scene geometry and camera FoV remain consistent regardless of input resolution.
+This flexibility allows the model to adapt to different computational constraints, striking a balance between finer detail and processing speed while maintaining global scene accuracy.
+To achieve this robustness, we train on dynamically varying image shapes and resolutions, ensuring that the model learns to infer depth consistently across a wide range of input conditions.
+Specifically, we sample images with variable pixel counts between 0.2MP and 0.6MP, allowing the model to operate effectively across diverse resolutions without being biased toward a single fixed input size.}

@@ -1,0 +1,20 @@
+\begin{table}[]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\centering
+Method & Precision & Latency (ms) \\
+\midrule 
+ChronoDepth & FP16 & 506 \\
+DepthCrafter & FP16 & 910 \\
+DepthAnyVideo & FP16 & 159 \\
+NVDS & FP32 & 204 \\
+DAv2-L & FP32 & 60 \\
+VDA-L (Ours) & FP32 & 67 \\
+VDA-S (Ours) & FP32 & \textbf{9.1} \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Inference latency comparisons for video depth estimation.} We measure average runtime for each frame on a single A100 GPU with a resolution of $518 \times 518$.}
+\label{tab::infer_time}
+\vspace{-18pt}
+\end{table}

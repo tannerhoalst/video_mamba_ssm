@@ -1,0 +1,49 @@
+\begin{figure*}[t]
+    \renewcommand{\arraystretch}{3}
+    \centering
+    \small
+    \begin{tabular}{cc|cccc|cc}
+        \multirow{1}{*}[4.8em]{\rotatebox[origin=c]{90}{IBims-1}}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/IBIMS_rgb.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/IBIMS_uni.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/IBIMS_metric.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/IBIMS_pro.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/IBIMS_our.pdf}
+        & \includegraphics[width=0.045\linewidth]{figures/assets/comparison/ibims_bar_depth.pdf}
+        & \includegraphics[width=0.045\linewidth]{figures/assets/comparison/ibims_bar_arel.pdf}\\
+
+        \multirow{1}{*}[5.5em]{\rotatebox[origin=c]{90}{TUM-RGBD}}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/TUM_rgb.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/TUM_uni.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/TUM_metric.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/TUM_depthpro.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/TUM_our.pdf}
+        & \includegraphics[width=0.045\linewidth]{figures/assets/comparison/tum_bar_depth.pdf}
+        & \includegraphics[width=0.045\linewidth]{figures/assets/comparison/tum_bar_arel.pdf} \\
+
+
+        \multirow{1}{*}[4.8em]{\rotatebox[origin=c]{90}{DDAD}}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/DDAD_rgb.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/DDAD_uni.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/DDAD_metric.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/DDAD_pro.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/DDAD_our.pdf}
+        & \includegraphics[width=0.045\linewidth]{figures/assets/comparison/ddad_bar_depth.pdf}
+        & \includegraphics[width=0.045\linewidth]{figures/assets/comparison/ddad_bar_arel.pdf} \\
+
+        \multirow{1}{*}[4.8em]{\rotatebox[origin=c]{90}{Sintel}}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/SINTEL_rgb.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/SINTEL_uni.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/SINTEL_metric.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/SINTEL_pro.pdf}
+        & \includegraphics[width=0.14\linewidth]{figures/assets/comparison/SINTEL_our.pdf}
+        & \includegraphics[width=0.045\linewidth]{figures/assets/comparison/sintel_bar_depth.pdf}
+        & \includegraphics[width=0.045\linewidth]{figures/assets/comparison/sintel_bar_arel.pdf}\\
+        
+        & RGB \& GT & UniDepth~\cite{piccinelli2024unidepth} & Metric3Dv2\textsuperscript{\dag}~\cite{hu2024metric3dv2} & DepthPro~\cite{bochkovskii2024depthpro} & \ourmodel & Depth & $\mathrm{A.Rel}$ \\
+    \end{tabular}
+    % \vspace{-1em}
+    \caption{\textbf{Zero-shot qualitative results.} Each pair of consecutive rows corresponds to one test sample. Each odd row shows the input RGB image and the 2D error map color-coded with \textit{coolwarm} based on the absolute relative error. Each even row shows GT depth and the predicted point cloud. The last column represents the specific colormap ranges for depth and error. (\dag): DDAD domain in the training set.}
+    \label{fig:results:main_vis}
+    \vspace{-1em}
+\end{figure*}

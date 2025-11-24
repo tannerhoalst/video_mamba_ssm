@@ -1,0 +1,21 @@
+\begin{table}[t]
+    \centering
+    \caption{\textbf{Architectural ablations.} The different architectural additions (``+'') and subtractions (``-'') from the original UniDepth~\cite{piccinelli2024unidepth} are reported. ``- SHE + Sine'': camera encoding via Sine encoding instead of Spherical Harmonic Transform of the pinhole-based pencil of rays. ``- Attention'': attention layers in the decoder are removed. ``+ ResNet Blocks'': the attention layers in the decoder are substituted with simpler ResNet blocks. ``+ Multi-resol.'': the decoder has lateral connections with the shallower encoder layer, rather than a simpler merging of all resolutions in the bottleneck.}
+    \vspace{-1em}
+    \label{tab:results:ablations_arch}
+    \resizebox{\linewidth}{!}{%
+    \begin{tabular}{ll|cccc|cc}
+    \toprule
+    & \multirow{2}{*}{\textbf{Architecture}} & \multicolumn{4}{c|}{{Performance}} & \multicolumn{2}{c}{{Efficiency}} \\
+     & & $\mathrm{\delta_1}\uparrow$ & $\mathrm{SI_{\log}}\downarrow$ & $\mathrm{F_A}\uparrow$ & $\mathrm{\rho_A}\uparrow$ & Latency$\downarrow$ & Params$\downarrow$\\
+    \midrule
+    1 & UniDepth~\cite{piccinelli2024unidepth} & $54.5$ & $16.4$ & $56.1$ & $77.1$ & 73.2 & 35.2 \\
+    2 & - SHE + Sine & $54.6$ & $16.4$ & $56.0$ & $76.9$ & 53.2 & 35.2 \\
+    3 & - Attention & $50.3$ & $17.9$ & $51.0$ & $76.6$ & 20.4 & 29.0 \\
+    4 & + ResNet Blocks & $52.6$ & $16.6$ & $55.0$ & $76.6$ & 24.0 & 33.5 \\
+    5 & + Multi-resol. & $54.5$ & $16.3$ & $56.0$ & $77.9$ & 25.0 & 34.2 \\
+    \bottomrule
+    \end{tabular}%
+    }
+    \vspace{-1em}
+\end{table}

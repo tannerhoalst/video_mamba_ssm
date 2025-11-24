@@ -1,0 +1,21 @@
+\begin{table*}[h]
+\centering
+\resizebox{0.9\linewidth}{!}{
+\begin{tabular}{lccccccccccc}
+\toprule
+\centering
+\multirow{2}{*}{Method / Metrics} & \multicolumn{2}{c}{KITTI} & \multicolumn{2}{c}{Sintel} & \multicolumn{2}{c}{NYUv2} & \multicolumn{2}{c}{ETH3D} & \multicolumn{2}{c}{DIODE} & \multirow{2}{*}{$\delta_1$ Rank}\\ 
+\cmidrule(r){2-11} 
+& AbsRel~(↓) & $\delta_1$~~(↑) & AbsRel~(↓) & $\delta_1$~~(↑) & AbsRel~(↓) & $\delta_1$~~(↑) & AbsRel~(↓) & $\delta_1$~~(↑) & AbsRel~(↓) & $\delta_1$~~(↑) \\
+\midrule 
+DepthCrafter~\cite{hu2024depthcrafter} & 0.107 & 0.891 & 0.568 & 0.652 & 0.082 & 0.936 & 0.179 & 0.793 & 0.141 & 0.857 & 4 \\
+DepthAnyVideo~\cite{depthanyvideo} & \textbf{0.073} & \textbf{0.946} & 0.687 & 0.692 & 0.058 & 0.963 & \textbf{0.123} & \textbf{0.881} & 0.072 & 0.942 & 2.4 \\
+DAv2-L~\cite{depth_anything_v2} & \underline{0.074} & \textbf{0.946} & \textbf{0.487} & \underline{0.752} & \textbf{0.045} & \textbf{0.979} & \underline{0.131} & \underline{0.865} & \textbf{0.066} & \textbf{0.952} & \textbf{1.4} \\
+VDA-L (Ours) & 0.075 & \textbf{0.946} & \underline{0.496} & \textbf{0.754} & \underline{0.046} & \underline{0.978} & 0.132 & 0.863 & \underline{0.067} & \underline{0.950} & \underline{2} \\
+% VDA-L (Ours) & 0.077 & \underline{0.943} & \underline{0.559} & \textbf{0.762} & \underline{0.046} & \underline{0.978} & 0.146 & 0.841 & \underline{0.067} & \underline{0.951} & 2.7 \\
+\bottomrule
+\end{tabular}}
+\caption{\textbf{Zero-shot single-image depth estimation results}. We compare with representative single-image~\cite{depth_anything_v2} and video depth estimation models~\cite{hu2024depthcrafter, depthanyvideo} with single-frame inputs. ``VDA-L'' denotes our model with ViT-Large backbone. The \textbf{best} and the \underline{second best} results are highlighted.}
+\label{tab::quant_monocular_depth_benchmark}
+\vspace{-18pt}
+\end{table*}
