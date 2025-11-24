@@ -14,16 +14,16 @@ Teacher is frozen. Student predicts small residual ΔD only.
 ---
 
 # Phase 0 — Setup & Baselines
-- [ ] Verify UniDepthV2 single-frame inference:
-  - [ ] camera prompt correct
-  - [ ] pseudo-spherical output mode
-  - [ ] edge-guided input preprocessing matched
-- [ ] Implement baseline temporal filters for comparison:
-  - [ ] EMA
-  - [ ] temporal bilateral
-  - [ ] measure static-region variance → flicker baseline
+- [x] Verify UniDepthV2 single-frame inference:
+  - [x] camera prompt correct
+  - [x] pseudo-spherical output mode
+  - [x] edge-guided input preprocessing matched
+- [x] Implement baseline temporal filters for comparison:
+  - [x] EMA
+  - [x] temporal bilateral
+  - [x] measure static-region variance → flicker baseline
 - [ ] Add teacher confidence calibration:
-  - [ ] record UniDepth uncertainty
+  - [x] record UniDepth uncertainty
   - [ ] capture variance on a static scene
   - [ ] map teacher uncertainty → reliability weighting
 - [ ] Install dependencies:

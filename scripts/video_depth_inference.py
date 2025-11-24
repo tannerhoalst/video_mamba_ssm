@@ -48,15 +48,21 @@ def parse_args() -> argparse.Namespace:
         help="Keep every Nth frame (stride=1 keeps all frames; stride=5 keeps every 5th frame).",
     )
     parser.add_argument(
-        "--stack-path",
-        type=Path,
-        help="Optional single .npy file to store a stacked array of shape (frames, H, W). Uses memmap to avoid RAM blowup.",
-    )
-    parser.add_argument(
         "--stack-dtype",
         choices=["float16", "float32"],
         default="float16",
         help="Datatype used for the stacked array (float16 cuts disk usage roughly in half).",
+    )
+    parser.add_argument(
+        "--save-uncertainty",
+        action="store_true",
+        help="If set, save UniDepth 'confidence' output per frame and as a stacked .npy in the output directory.",
+    )
+    parser.add_argument(
+        "--uncert-stack-dtype",
+        choices=["float16", "float32"],
+        default="float16",
+        help="Datatype used for the stacked uncertainty array.",
     )
     parser.add_argument(
         "--skip-individual",
@@ -168,7 +174,13 @@ def run_inference(args: argparse.Namespace) -> None:
 
     stack_dtype = np.float16 if args.stack_dtype == "float16" else np.float32
     stack_mm: Optional[np.memmap] = None
+    uncert_mm: Optional[np.memmap] = None
     stack_index = 0
+
+    # Resolve stack paths automatically in the output directory.
+    video_stem = args.video.stem
+    depth_stack_path = args.output_dir / f"{video_stem}_depth_stack.npy"
+    uncert_stack_path = args.output_dir / f"{video_stem}_uncert_stack.npy" if args.save_uncertainty else None
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -183,32 +195,42 @@ def run_inference(args: argparse.Namespace) -> None:
         batch_indices.append(frame_id)
 
         if len(batch) >= args.batch_size:
-            stack_mm, stack_index = process_batch(
+            stack_mm, uncert_mm, stack_index = process_batch(
                 batch,
                 batch_indices,
                 model,
                 device,
                 args,
-                stack_mm,
-                stack_dtype,
-                stack_index,
-                expected_frames,
-            )
+            stack_mm,
+            uncert_mm,
+            stack_dtype,
+            stack_index,
+            expected_frames,
+            args.uncert_stack_dtype,
+            args.save_uncertainty,
+            depth_stack_path,
+            uncert_stack_path,
+        )
             pbar.update(len(batch_indices))
             batch.clear()
             batch_indices.clear()
 
     if batch:
-        stack_mm, stack_index = process_batch(
+        stack_mm, uncert_mm, stack_index = process_batch(
             batch,
             batch_indices,
             model,
             device,
             args,
             stack_mm,
+            uncert_mm,
             stack_dtype,
             stack_index,
             expected_frames,
+            args.uncert_stack_dtype,
+            args.save_uncertainty,
+            depth_stack_path,
+            uncert_stack_path,
         )
         pbar.update(len(batch_indices))
 
@@ -221,7 +243,15 @@ def run_inference(args: argparse.Namespace) -> None:
         note = ""
         if filled < total:
             note = f" (filled {filled} / {total} frames; remaining entries left at zero)"
-        print(f"Stacked depth saved to: {args.stack_path} with shape {stack_mm.shape} and dtype {stack_mm.dtype}{note}")
+        print(f"Stacked depth saved to: {depth_stack_path} with shape {stack_mm.shape} and dtype {stack_mm.dtype}{note}")
+    if uncert_mm is not None:
+        uncert_mm.flush()
+        filled = stack_index
+        total = uncert_mm.shape[0]
+        note = ""
+        if filled < total:
+            note = f" (filled {filled} / {total} frames; remaining entries left at zero)"
+        print(f"Stacked uncertainty saved to: {uncert_stack_path} with shape {uncert_mm.shape} and dtype {uncert_mm.dtype}{note}")
 
 
 def process_batch(
@@ -231,42 +261,68 @@ def process_batch(
     device: torch.device,
     args: argparse.Namespace,
     stack_mm: Optional[np.memmap],
+    uncert_mm: Optional[np.memmap],
     stack_dtype: np.dtype,
     stack_index: int,
     expected_frames: Optional[int],
-) -> tuple[Optional[np.memmap], int]:
+    uncert_stack_dtype: str,
+    save_uncertainty: bool,
+    depth_stack_path: Path,
+    uncert_stack_path: Optional[Path],
+) -> tuple[Optional[np.memmap], Optional[np.memmap], int]:
     batch = torch.stack(frames, dim=0).to(device)
     with torch.no_grad():
         preds = model.infer(batch, normalize=True)
     depths = preds["depth"].cpu()  # (B, 1, H, W)
+    confidences = preds.get("confidence")
+    if confidences is not None:
+        confidences = confidences.cpu()
 
-    for depth_tensor, frame_id in zip(depths, indices):
+    for idx, (depth_tensor, frame_id) in enumerate(zip(depths, indices)):
         depth_np = depth_tensor.squeeze(0).numpy()
+        conf_np = confidences[idx].squeeze(0).numpy() if confidences is not None else None
 
-        if args.stack_path and stack_mm is None:
+        if depth_stack_path and stack_mm is None:
             # Lazy create memmap after first depth so we know H and W.
             if args.stride <= 0:
                 raise ValueError("Stride must be >= 1.")
-            if args.stack_path.suffix != ".npy":
-                args.stack_path = args.stack_path.with_suffix(".npy")
             height, width = depth_np.shape
-            if args.stack_path.exists():
-                args.stack_path.unlink()
+            if depth_stack_path.exists():
+                depth_stack_path.unlink()
             if expected_frames is None:
                 raise ValueError(
                     "Video frame count unavailable; cannot preallocate stacked .npy. Try without --stack-path."
                 )
-            stack_mm = make_memmap(args.stack_path, stack_dtype, expected_frames, height, width)
+            stack_mm = make_memmap(depth_stack_path, stack_dtype, expected_frames, height, width)
+        if save_uncertainty and uncert_stack_path and conf_np is not None and uncert_mm is None:
+            if uncert_stack_path.exists():
+                uncert_stack_path.unlink()
+            if expected_frames is None:
+                raise ValueError(
+                    "Video frame count unavailable; cannot preallocate uncertainty stacked .npy. Provide expected frames."
+                )
+            uncert_dtype_np = np.float16 if uncert_stack_dtype == "float16" else np.float32
+            uncert_mm = make_memmap(uncert_stack_path, uncert_dtype_np, expected_frames, conf_np.shape[0], conf_np.shape[1])
 
+        wrote_stack = False
         if stack_mm is not None:
             stack_mm[stack_index] = depth_np.astype(stack_dtype, copy=False)
+            wrote_stack = True
+        if save_uncertainty and conf_np is not None and uncert_mm is not None:
+            uncert_dtype_np = np.float16 if uncert_stack_dtype == "float16" else np.float32
+            uncert_mm[stack_index] = conf_np.astype(uncert_dtype_np, copy=False)
+            wrote_stack = True
+        if wrote_stack:
             stack_index += 1
 
         if not args.skip_individual:
             out_name = f"{args.video.stem}_frame{frame_id:06d}.npy"
             np.save(args.output_dir / out_name, depth_np)
+        if save_uncertainty and conf_np is not None and not args.skip_individual:
+            out_name_conf = f"{args.video.stem}_frame{frame_id:06d}_uncert.npy"
+            np.save(args.output_dir / out_name_conf, conf_np)
 
-    return stack_mm, stack_index
+    return stack_mm, uncert_mm, stack_index
 
 
 if __name__ == "__main__":
