@@ -3,6 +3,7 @@ gradio
 h5py>=3.10.0
 huggingface-hub>=0.22.0
 imageio
+lpips=0.1.4
 matplotlib
 av>=10.0.0
 numpy>=2.0.0
@@ -23,4 +24,3 @@ torch==2.9.1+cu130
 torchvision==0.24.1+cu130
 torchaudio==2.9.1+cu130
 wandb
-xformers>=0.0.26

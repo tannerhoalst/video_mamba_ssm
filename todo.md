@@ -22,16 +22,43 @@ Teacher is frozen. Student predicts small residual ΔD only.
   - [x] EMA
   - [x] temporal bilateral
   - [x] measure static-region variance → flicker baseline
-- [ ] Add teacher confidence calibration:
+- [x] Add teacher confidence calibration:
   - [x] record UniDepth uncertainty
-  - [ ] capture variance on a static scene
-  - [ ] map teacher uncertainty → reliability weighting
-- [ ] Install dependencies:
-  - [ ] Torch + CUDA, UniDepthV2, Mamba/VMamba, GMFlow/RAFT/UniMatch (optional)
-  - [ ] decord or PyAV, einops, tqdm, lpips, ffmpeg
+  - [x] capture variance on a static scene
+  - [x] map teacher uncertainty → reliability weighting
+- [x] Install dependencies:
+  - [x] Torch + CUDA, UniDepthV2, Mamba/VMamba, GMFlow/RAFT/UniMatch (optional)
+  - [x] decord or PyAV, einops, tqdm, lpips, ffmpeg
 - [ ] Prepare anti-collapse strategy:
-  - [ ] small % pseudo-GT clips (KITTI, TUM, ScanNet, synthetic)
-  - [ ] OR mild teacher jitter (noise + small scale shift)
+  - [ ] Collect GT / pseudo-GT clips (commercial-friendly):
+    - [ ] Hypersim  (indoor, dense, synthetic, perfect GT)
+    - [ ] TUM RGB-D (indoor, handheld, real GT) (fr1/desk, fr1/desk2, fr1/xyz, fr1/room, fr3/long_office_household)
+  - [ ] Download a small working subset from each:
+    - [ ] Hypersim: 3–5 scenes (100–300 frames each)
+    - [ ] TUM RGB-D: 3–5 sequences (100–300 frames each)
+  - [ ] Export aligned RGB + metric depth + intrinsics into:
+    - `/mnt/vrdata/depth_ground_truth/{hypersim,tum}/`
+  - [ ] Normalize formats to match UniDepth preprocessing:
+    - [ ] consistent resolution / aspect ratio
+    - [ ] depth units standardized (meters)
+    - [ ] intrinsics in same convention UniDepth expects
+    - [ ] RGB and depth grids aligned after resizing
+  - [ ] Add GT-aware manifest fields:
+    - [ ] `has_gt: bool`
+    - [ ] `depth_gt_path: str | None`
+    - [ ] optional: `dataset_name`, `scene_id` for debugging
+  - [ ] Implement small GT mix in loss:
+    - [ ] sample GT clips in ~5–10% of batches
+    - [ ] define `L_close = λ_gt * L_gt + λ_teacher * L_teacher` with `λ_gt > λ_teacher`
+  - [ ] Implement teacher jitter path:
+    - [ ] in dataset loader: with probability `p_jitter`, create `D_in = s * D_teacher + ε`
+    - [ ] `s ~ Uniform(0.97, 1.03)`
+    - [ ] `ε ~ N(0, (σ_rel * D_teacher)^2)`, `σ_rel ≈ 0.01`
+    - [ ] model input uses `D_in`; `L_close` supervised against clean `D_teacher`
+  - [ ] Log collapse indicators:
+    - [ ] mean `|ΔD|` per batch
+    - [ ] fraction of pixels with `|ΔD| < τ` (tiny threshold)
+    - [ ] temporal metrics vs raw UniDepth (ensure not identical)
 - [ ] Define temporal window pattern:
   - [ ] window length N
   - [ ] overlap To

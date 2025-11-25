@@ -7,6 +7,7 @@ sudo apt-get update
 sudo apt-get install -y libjpeg-dev zlib1g-dev libopenjp2-7-dev libtiff-dev libwebp-dev liblcms2-dev
 sudo apt-get install -y build-essential cmake ninja-build
 
+set -e
 python3 -m venv .venv
 source .venv/bin/activate
 
@@ -14,6 +15,7 @@ PKG_CONFIG_PATH="/home/thoalst/ffmpeg-8.0/lib/pkgconfig" \
 CC="cc -mavx2" \
 uv pip install \
   --no-binary av \
+  --no-binary causal-conv1d \
   --index-url https://pypi.org/simple \
   --extra-index-url https://download.pytorch.org/whl/cu130 \
   --index-strategy unsafe-best-match \
@@ -21,11 +23,12 @@ uv pip install \
   --upgrade --force-reinstall
 
 uv pip install -v --no-build-isolation -U git+https://github.com/facebookresearch/xformers.git@main#egg=xformers
-uv pip install -e UniDepth
+uv pip install mamba-ssm[causal-conv1d] --no-build-isolation
+uv pip install --upgrade "transformers>=4.40.0" "tokenizers>=0.19"
 
+uv pip install -e UniDepth
 cd UniDepth/unidepth/ops/knn
 TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0+PTX" uv pip install -v --no-build-isolation .
-
 cd ../extract_patches
 TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0+PTX" uv pip install -v --no-build-isolation .
 cd ../../../..
@@ -179,3 +182,16 @@ Recommended k for weight = exp(-k * uncert/median_uncert): k=0.6261, mse=0.1192
 Saved uncertainty→variance curve to /mnt/vrdata/depth_maps/unidepth/run1/uncert_curve.csv
 (.venv) thoalst@computer:/mnt/vrdata/video_mamba_depth$ 
 
+```shell
+./download.py \
+  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
+  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
+  --contains camera_keyframe_positions \
+  --contains camera_keyframe_orientations \
+  --contains metadata_cameras.csv \
+  --contains metadata_scene.csv \
+  --contains .color.hdf5 \
+  --contains depth_meters.hdf5 \
+  --contains scene_cam_00_final_preview \
+  --silent
+```
