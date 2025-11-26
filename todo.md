@@ -31,12 +31,12 @@ Teacher is frozen. Student predicts small residual ΔD only.
   - [x] decord or PyAV, einops, tqdm, lpips, ffmpeg
 - [ ] Prepare anti-collapse strategy:
   - [ ] Collect GT / pseudo-GT clips (commercial-friendly):
-    - [ ] Hypersim  (indoor, dense, synthetic, perfect GT)
-    - [ ] TUM RGB-D (indoor, handheld, real GT) (fr1/desk, fr1/desk2, fr1/xyz, fr1/room, fr3/long_office_household)
-  - [ ] Download a small working subset from each:
-    - [ ] Hypersim: 3–5 scenes (100–300 frames each)
-    - [ ] TUM RGB-D: 3–5 sequences (100–300 frames each)
-  - [ ] Export aligned RGB + metric depth + intrinsics into:
+    - [x] Hypersim  (indoor, dense, synthetic, perfect GT)
+    - [x] TUM RGB-D (indoor, handheld, real GT) (fr1/desk, fr1/desk2, fr1/xyz, fr1/room, fr3/long_office_household)
+  - [x] Download a small working subset from each:
+    - [x] Hypersim: 3–5 scenes (100–300 frames each)
+    - [x] TUM RGB-D: 3–5 sequences (100–300 frames each)
+  - [x] Export aligned RGB + metric depth + intrinsics into:
     - `/mnt/vrdata/depth_ground_truth/{hypersim,tum}/`
   - [ ] Normalize formats to match UniDepth preprocessing:
     - [ ] consistent resolution / aspect ratio

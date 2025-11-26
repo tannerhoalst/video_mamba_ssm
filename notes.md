@@ -78,6 +78,19 @@ python scripts/visualize_depth_video.py \
   --percentiles 1 99 \
   --cmap inferno \
   --video-ref /mnt/vrdata/clips/sngllittlepucknathan_8kvr265/sngllittlepucknathan_8kvr265_right_flat_2880x2688_h265_clip03.mp4
+
+LD_LIBRARY_PATH=/home/thoalst/ffmpeg-8.0/lib:$LD_LIBRARY_PATH \
+python scripts/visualize_depth_uncertainty_video.py \
+  /mnt/vrdata/depth_maps/unidepth/run1/sngllittlepucknathan_8kvr265_right_flat_2880x2688_h265_clip03_uncert_stack.npy \
+  /mnt/vrdata/depth_maps/unidepth/run1/uncert_preview.mp4 \
+  --use-ffmpeg \
+  --ffmpeg-bin /home/thoalst/ffmpeg-8.0/bin/ffmpeg \
+  --encoder hevc_nvenc \
+  --pix-fmt yuv420p \
+  --bitrate 20M \
+  --percentiles 1 99 \
+  --uncert-cmap magma \
+  --video-ref /mnt/vrdata/clips/sngllittlepucknathan_8kvr265/sngllittlepucknathan_8kvr265_right_flat_2880x2688_h265_clip03.mp4
 ```
 
 
@@ -186,12 +199,43 @@ Saved uncertainty→variance curve to /mnt/vrdata/depth_maps/unidepth/run1/uncer
 ./download.py \
   --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
   --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
-  --contains camera_keyframe_positions \
-  --contains camera_keyframe_orientations \
-  --contains metadata_cameras.csv \
-  --contains metadata_scene.csv \
   --contains .color.hdf5 \
+  --silent
+
+./download.py \
+  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
+  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
   --contains depth_meters.hdf5 \
+  --silent
+
+./download.py \
+  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
+  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
+  --contains camera_keyframe_ \
+  --silent
+
+./download.py \
+  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
+  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
+  --contains metadata_cameras.csv \
+  --silent
+
+./download.py \
+  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
+  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
+  --contains metadata_scene.csv \
+  --silent
+
+./download.py \
+  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
+  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
   --contains scene_cam_00_final_preview \
   --silent
 ```
+
+I can give you a script:
+✔ To load Hypersim .depth_meters.hdf5 + .color.hdf5
+✔ Convert to PNG / NPY
+✔ Normalize intrinsics
+✔ Build your GT manifest
+✔ Prepare sequences for the SSM smoothing pipeline
