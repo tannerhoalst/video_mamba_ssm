@@ -21,6 +21,7 @@ import numpy as np
 import torch
 import av
 from tqdm import tqdm
+import pandas as pd
 
 from unidepth.models import UniDepthV2
 
@@ -88,6 +89,20 @@ def parse_args() -> argparse.Namespace:
         type=int,
         help="Override FFmpeg thread count. Only used with --decoder pyav.",
     )
+    parser.add_argument("--fx", type=float, help="Optional pinhole fx (pixels) for all frames.")
+    parser.add_argument("--fy", type=float, help="Optional pinhole fy (pixels) for all frames.")
+    parser.add_argument("--cx", type=float, help="Optional pinhole cx (pixels) for all frames.")
+    parser.add_argument("--cy", type=float, help="Optional pinhole cy (pixels) for all frames.")
+    parser.add_argument(
+        "--intrinsics-csv",
+        type=Path,
+        help="Optional metadata_camera_parameters.csv; if provided, intrinsics are read from this file.",
+    )
+    parser.add_argument(
+        "--camera-name",
+        default="cam_00",
+        help="Camera name to select from --intrinsics-csv (default: cam_00). Ignored if fx/fy/cx/cy are given.",
+    )
     return parser.parse_args()
 
 
@@ -96,6 +111,43 @@ def load_model(model_id: str, device_str: Optional[str]) -> tuple[UniDepthV2, to
     model = UniDepthV2.from_pretrained(model_id)
     model = model.to(device).eval()
     return model, device
+
+
+def parse_intrinsics_csv(csv_path: Path, camera_name: str) -> np.ndarray:
+    """
+    Parse metadata_camera_parameters.csv to get fx, fy, cx, cy.
+    Supports either a single 'M_proj' column (16 space-separated floats) or M_proj_00..33 columns.
+    Uses the first row matching camera_name; if camera_name not found, falls back to the first row.
+    """
+    df = pd.read_csv(csv_path)
+    if "camera_name" in df.columns:
+        df_cam = df[df["camera_name"] == camera_name]
+        if not df_cam.empty:
+            df = df_cam
+    row = df.iloc[0]
+
+    W = float(row["settings_output_img_width"])
+    H = float(row["settings_output_img_height"])
+
+    if "M_proj" in row:
+        vals = [float(x) for x in str(row["M_proj"]).strip().split()]
+        if len(vals) != 16:
+            raise ValueError(f"M_proj in {csv_path} is not 16 values")
+    else:
+        vals = []
+        for i in range(4):
+            for j in range(4):
+                key = f"M_proj_{i}{j}"
+                if key not in row:
+                    raise ValueError(f"Missing {key} in {csv_path}")
+                vals.append(float(row[key]))
+    m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33 = vals
+    fx = m00 * W / 2.0
+    fy = m11 * H / 2.0
+    cx = (m02 + 1.0) * W / 2.0
+    cy = (m12 + 1.0) * H / 2.0
+    K = np.array([[fx, 0.0, cx], [0.0, fy, cy], [0.0, 0.0, 1.0]], dtype=np.float32)
+    return K
 
 
 def pyav_stream(path: Path, stride: int, hwaccel: Optional[str], hwaccel_output: Optional[str], threads: Optional[int]) -> tuple[Iterable[Tuple[int, np.ndarray]], Optional[int]]:
@@ -177,6 +229,20 @@ def run_inference(args: argparse.Namespace) -> None:
     uncert_mm: Optional[np.memmap] = None
     stack_index = 0
 
+    # Optional fixed intrinsics
+    K_fixed: Optional[torch.Tensor] = None
+    if all(v is not None for v in (args.fx, args.fy, args.cx, args.cy)):
+        K_np = np.array(
+            [[args.fx, 0.0, args.cx], [0.0, args.fy, args.cy], [0.0, 0.0, 1.0]],
+            dtype=np.float32,
+        )
+        K_fixed = torch.from_numpy(K_np).to(device)
+    elif any(v is not None for v in (args.fx, args.fy, args.cx, args.cy)):
+        raise ValueError("If specifying intrinsics, provide all of fx, fy, cx, cy.")
+    elif args.intrinsics_csv:
+        K_np = parse_intrinsics_csv(args.intrinsics_csv, args.camera_name)
+        K_fixed = torch.from_numpy(K_np).to(device)
+
     # Resolve stack paths automatically in the output directory.
     video_stem = args.video.stem
     depth_stack_path = args.output_dir / f"{video_stem}_depth_stack.npy"
@@ -201,11 +267,12 @@ def run_inference(args: argparse.Namespace) -> None:
                 model,
                 device,
                 args,
-            stack_mm,
-            uncert_mm,
-            stack_dtype,
-            stack_index,
-            expected_frames,
+                K_fixed,
+                stack_mm,
+                uncert_mm,
+                stack_dtype,
+                stack_index,
+                expected_frames,
             args.uncert_stack_dtype,
             args.save_uncertainty,
             depth_stack_path,
@@ -222,6 +289,7 @@ def run_inference(args: argparse.Namespace) -> None:
             model,
             device,
             args,
+            K_fixed,
             stack_mm,
             uncert_mm,
             stack_dtype,
@@ -260,6 +328,7 @@ def process_batch(
     model: UniDepthV2,
     device: torch.device,
     args: argparse.Namespace,
+    K_fixed: Optional[torch.Tensor],
     stack_mm: Optional[np.memmap],
     uncert_mm: Optional[np.memmap],
     stack_dtype: np.dtype,
@@ -271,8 +340,11 @@ def process_batch(
     uncert_stack_path: Optional[Path],
 ) -> tuple[Optional[np.memmap], Optional[np.memmap], int]:
     batch = torch.stack(frames, dim=0).to(device)
+    camera = None
+    if K_fixed is not None:
+        camera = K_fixed.expand(batch.shape[0], 3, 3)
     with torch.no_grad():
-        preds = model.infer(batch, normalize=True)
+        preds = model.infer(batch, camera=camera, normalize=True)
     depths = preds["depth"].cpu()  # (B, 1, H, W)
     confidences = preds.get("confidence")
     if confidences is not None:

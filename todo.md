@@ -71,27 +71,22 @@ Teacher is frozen. Student predicts small residual ΔD only.
 ---
 
 # Phase 1 — Precomputation (Teacher Depth + Motion)
-- [ ] Create script: scripts/precompute_unidepth_depth.py
-  - [ ] decode frames (optional stride)
-  - [ ] compute intrinsics for resized inputs
-  - [ ] run UniDepthV2 → save depth + uncertainty + camera prompts
-  - [ ] downsample RGB to match depth-grid if needed
-  - [ ] save a low-res (×2 or ×4) version of teacher depth + uncertainty for the SSM path, plus record the scale factor / padding offsets
-  - [ ] precompute high-frequency guidance maps per frame for refinement/upsampling:
+- [x] Create script: scripts/precompute_unidepth_depth.py
+  - [x] decode frames (optional stride)
+  - [x] compute intrinsics for resized inputs (records UniDepth-adjusted intrinsics_out)
+  - [x] run UniDepthV2 → save depth + uncertainty + camera prompts
+  - [x] downsample RGB to match depth-grid if needed
+  - [x] save a low-res (×2 or ×4) version of teacher depth + uncertainty for the SSM path, plus record the scale factor / padding offsets
+  - [x] precompute high-frequency guidance maps per frame for refinement/upsampling:
         Sobel/Laplacian edges from RGB, Sobel on teacher depth, optional uncertainty gradients
-  - [ ] precompute guidance grad-magnitude maps G_t for optional edge-aware upsampling
-  - [ ] compute optical flow at LOW RES ONLY (for gating)
-  - [ ] compute occlusion masks (fw/bw consistency)
-- [ ] Build dataset manifest (.json or .pkl):
-  - [ ] frame paths
-  - [ ] depth paths
-  - [ ] uncertainty
-  - [ ] intrinsics
-  - [ ] flow paths (optional)
-  - [ ] occlusion masks
-- [ ] Quick viewer tool:
-  - [ ] show RGB / teacher depth / uncertainty
-  - [ ] check ranges + continuity
+  - [x] precompute guidance grad-magnitude maps G_t for optional edge-aware upsampling
+- [x] Build dataset manifest (.json or .pkl):
+  - [x] frame paths
+  - [x] depth paths
+  - [x] uncertainty
+  - [x] intrinsics
+- [x] Quick viewer tool:
+  - [x] show RGB / teacher depth / uncertainty
 
 ---
 
@@ -267,3 +262,6 @@ Teacher is frozen. Student predicts small residual ΔD only.
 Future extension (optional real-world check):
 - Add a tiny TUM RGB-D slice for validation or ~5% GT mix:
   sequences: fr1/desk, fr1/desk2, fr1/xyz, fr1/room, fr3/long_office_household
+
+Possible extensions:
+- Add low-res optical flow + occlusion masks for gating if future experiments show a benefit (flow can be unreliable with dynamic scenes and occlusions; video depth anything v2 avoids flow-based supervision).

@@ -65,7 +65,9 @@ python scripts/video_depth_inference.py \
   --hwaccel-output-format cuda \
   --stack-dtype float16 \
   --save-uncertainty \
-  --uncert-stack-dtype float16
+  --uncert-stack-dtype float16 \
+  --intrinsics-csv scripts/data_prep/metadata_camera_parameters.csv \
+  --camera-name cam_00
 
 LD_LIBRARY_PATH=/home/thoalst/ffmpeg-8.0/lib:$LD_LIBRARY_PATH \
 python scripts/visualize_depth_video.py \
@@ -170,6 +172,15 @@ python scripts/train_refiner_stub.py \
   --batch-size 2 --gt-fraction 0.1 \
   --lambda-gt 1.0 --lambda-teacher 0.3 \
   --p-jitter 0.2 --lr 1e-4
+
+python scripts/precompute_unidepth_depth.py \
+  --data-root /mnt/vrdata/depth_ground_truth/hypersim_prepared \
+  --out-root /mnt/vrdata/depth_ground_truth/hypersim_teacher \
+  --model-id lpiccinelli/unidepth-v2-vitb14 \
+  --batch-size 4 \
+  --low-factor 2
+
+# Flow/occlusion is stubbed (zeros); hook your flow model into compute_flow_stub when ready.
 ```
 
 thoalst@computer:/mnt/vrdata/video_mamba_depth$ source .venv/bin/activate
