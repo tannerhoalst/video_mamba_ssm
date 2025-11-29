@@ -1,3 +1,4 @@
+requests>=2.28.0
 einops>=0.7.0
 gradio
 h5py>=3.10.0

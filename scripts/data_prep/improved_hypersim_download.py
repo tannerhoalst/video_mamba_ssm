@@ -31,16 +31,19 @@ TARGET_DIR = "/mnt/vrdata/depth_ground_truth/hypersim"
 KEEP_KEYWORDS = [
     "color.hdf5",
     "depth_meters.hdf5",
-    "camera_keyframe_positions",
-    "camera_keyframe_orientations",
+    "camera_keyframe",         # include positions/orientations/intrinsics if present
+    "metadata_camera_parameters.csv",
     "metadata_cameras.csv",
-    "metadata_scene.csv"
+    "metadata_scene.csv",
 ]
 
 BASE_URL = "https://docs-assets.developer.apple.com/ml-research/datasets/hypersim/v1/scenes"
 
 CHUNK_SIZE = 1024 * 1024   # 1MB chunks
 MAX_RETRIES = 5
+
+# Global camera parameters CSV (small file) from the official repo
+GLOBAL_INTRINSICS_URL = "https://raw.githubusercontent.com/apple/ml-hypersim/main/evermotion_dataset/analysis/metadata_camera_parameters.csv"
 
 
 # ==========================
@@ -120,6 +123,17 @@ def extract_selected(zip_path, scene_name):
 
 def main():
     os.makedirs(TARGET_DIR, exist_ok=True)
+
+    # Download global intrinsics CSV (small)
+    intr_path = os.path.join(TARGET_DIR, "metadata_camera_parameters.csv")
+    try:
+        resp = requests.get(GLOBAL_INTRINSICS_URL, timeout=20)
+        resp.raise_for_status()
+        with open(intr_path, "wb") as f:
+            f.write(resp.content)
+        print(f"Downloaded global camera parameters to {intr_path}")
+    except Exception as e:
+        print(f"Warning: could not download global camera parameters: {e}")
 
     for scene in SCENES:
         print("\n======================================")

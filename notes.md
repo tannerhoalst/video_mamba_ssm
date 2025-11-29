@@ -25,6 +25,7 @@ uv pip install \
 uv pip install -v --no-build-isolation -U git+https://github.com/facebookresearch/xformers.git@main#egg=xformers
 uv pip install mamba-ssm[causal-conv1d] --no-build-isolation
 uv pip install --upgrade "transformers>=4.40.0" "tokenizers>=0.19"
+uv pip install decord --no-build-isolation
 
 uv pip install -e UniDepth
 cd UniDepth/unidepth/ops/knn
@@ -148,8 +149,6 @@ python scripts/baseline_temporal_filters.py \
   --median-sample-frames 64 \
   --median-sample-pixels 2000000
 
-source .venv/bin/activate
-
 python scripts/calibrate_uncertainty.py \
   --depth-stack /mnt/vrdata/depth_maps/unidepth/run1/sngllittlepucknathan_8kvr265_right_flat_2880x2688_h265_clip03_depth_stack.npy \
   --uncert-stack /mnt/vrdata/depth_maps/unidepth/run1/sngllittlepucknathan_8kvr265_right_flat_2880x2688_h265_clip03_uncert_stack.npy \
@@ -157,6 +156,20 @@ python scripts/calibrate_uncertainty.py \
   --curve-csv /mnt/vrdata/depth_maps/unidepth/run1/uncert_curve.csv \
   --chunk-frames 32
 
+python scripts/data_prep/improved_hypersim_download.py
+
+python scripts/data_prep/prepare_hypersim_unidepth.py \
+  --in-root /mnt/vrdata/depth_ground_truth/hypersim \
+  --out-root /mnt/vrdata/depth_ground_truth/hypersim_prepared \
+  --target-size 518 \
+  --low-factor 2
+
+python scripts/train_refiner_stub.py \
+  --data-root /mnt/vrdata/depth_ground_truth/hypersim_prepared \
+  --window 12 --overlap 6 --keyframe-stride 4 \
+  --batch-size 2 --gt-fraction 0.1 \
+  --lambda-gt 1.0 --lambda-teacher 0.3 \
+  --p-jitter 0.2 --lr 1e-4
 ```
 
 thoalst@computer:/mnt/vrdata/video_mamba_depth$ source .venv/bin/activate
@@ -195,47 +208,3 @@ Recommended k for weight = exp(-k * uncert/median_uncert): k=0.6261, mse=0.1192
 Saved uncertainty→variance curve to /mnt/vrdata/depth_maps/unidepth/run1/uncert_curve.csv
 (.venv) thoalst@computer:/mnt/vrdata/video_mamba_depth$ 
 
-```shell
-./download.py \
-  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
-  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
-  --contains .color.hdf5 \
-  --silent
-
-./download.py \
-  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
-  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
-  --contains depth_meters.hdf5 \
-  --silent
-
-./download.py \
-  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
-  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
-  --contains camera_keyframe_ \
-  --silent
-
-./download.py \
-  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
-  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
-  --contains metadata_cameras.csv \
-  --silent
-
-./download.py \
-  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
-  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
-  --contains metadata_scene.csv \
-  --silent
-
-./download.py \
-  --directory /mnt/vrdata/depth_ground_truth/ml-hypersim/hypersim_subset \
-  --contains ai_001_001 --contains ai_001_002 --contains ai_001_003 --contains ai_002_001 --contains ai_003_001 \
-  --contains scene_cam_00_final_preview \
-  --silent
-```
-
-I can give you a script:
-✔ To load Hypersim .depth_meters.hdf5 + .color.hdf5
-✔ Convert to PNG / NPY
-✔ Normalize intrinsics
-✔ Build your GT manifest
-✔ Prepare sequences for the SSM smoothing pipeline
