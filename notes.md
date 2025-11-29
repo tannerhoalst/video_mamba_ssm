@@ -179,8 +179,6 @@ python scripts/precompute_unidepth_depth.py \
   --model-id lpiccinelli/unidepth-v2-vitb14 \
   --batch-size 4 \
   --low-factor 2
-
-# Flow/occlusion is stubbed (zeros); hook your flow model into compute_flow_stub when ready.
 ```
 
 thoalst@computer:/mnt/vrdata/video_mamba_depth$ source .venv/bin/activate
