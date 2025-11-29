@@ -87,7 +87,8 @@ class Camera:
 
     def get_rays(self, shapes, noisy=False):
         b, h, w = shapes
-        uv = coords_grid(1, h, w, device=self.K.device, noisy=noisy)
+        # Use the provided batch size so rays align with batched intrinsics.
+        uv = coords_grid(b, h, w, device=self.K.device, noisy=noisy)
         rays = self.unproject(uv)
         return rays / torch.norm(rays, dim=1, keepdim=True).clamp(min=1e-4)
 

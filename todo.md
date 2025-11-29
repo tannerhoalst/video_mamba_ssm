@@ -57,6 +57,7 @@ Teacher is frozen. Student predicts small residual ΔD only.
     - [x] mean `|ΔD|` per batch
     - [x] fraction of pixels with `|ΔD| < τ` (tiny threshold)
     - [x] temporal metrics vs raw UniDepth (ensure not identical)
+    - [ ] correlation check: corr(|ΔD|, 1 - c(x)); expect larger residuals mainly where teacher confidence is low
 - [ ] Define temporal window pattern:
   - [x] window length N (N = 12)
         - ~0.4s context at 30 fps; good balance of temporal smoothing vs. VRAM/latency
@@ -123,8 +124,13 @@ Teacher is frozen. Student predicts small residual ΔD only.
   - RGB-low (optional)
   - flow-gating mask (optional) shaped [B, N, 1, Hs, Ws], values ∈ [0,1], 0 = ignore temporal loss, 1 = fully trust
   - uncertainty map (low-res; optionally full-res for refinement)
+  - calibrated confidence map c(x) derived from uncertainty (e.g., exp(-α u) or 1/(u+ε)); include as explicit input channel
   - high-res guidance maps: RGB edges, depth edges, optional uncertainty gradients
   - time encodings
+  - gating with c(x):
+    - use c(x) to modulate residual clamp tightness
+    - weight teacher-anchor loss
+    - scale residual regularization strength
 - [ ] Architecture:
   - [ ] Multi-scale path:
     - Stage 1: keep teacher depth at full resolution (no rescale of metric units)
@@ -152,17 +158,18 @@ Teacher is frozen. Student predicts small residual ΔD only.
 
 # Phase 4 — Losses (Motion-Aware, No Flow Warp)
 - [ ] Teacher-anchored close loss:
-  - L1 or L2 on log-depth difference (log(D + ε), ε ≈ 1e-3)
-  - weight by calibrated uncertainty
+  - per-pixel weight w_teacher(x) = c(x)
+  - L_teacher = Σ w_teacher |log(D_final + ε) − log(D_teacher + ε)|
   - compute at low-res for SSM output and optionally at full-res for refinement δD_full
-  - optional small metric consistency stabilizer: α · ‖D_final − D_teacher‖1 with α≈0.01
+  - optional small metric consistency stabilizer: α · ‖D_final − D_teacher‖1 with α≈0.01
 - [ ] Temporal consistency:
   - match ∂(log D)/∂t between refined frames
+  - uncertainty + occlusion-aware weight: w_temp(x) = (1 - occ_mask(x)) * w0 * (1 + k * (1 − c(x)))  # occ_mask=1 where occluded/unreliable flow
   - avoid raw-depth gradients (worse stability)
 - [ ] Flow/occlusion gating:
   - downweight temporal loss in occluded or very fast-motion regions
 - [ ] Residual regularization:
-  - small L1 on ΔD magnitude to prevent drift
+  - L_res = Σ λ_res * c(x) * |ΔD| to keep ΔD small in high-confidence zones
 - [ ] Optional photometric warp:
   - warp RGB using refined depth + intrinsics
   - low weight
@@ -192,6 +199,7 @@ Teacher is frozen. Student predicts small residual ΔD only.
   - [ ] create windows (N, To, Tk, Δk)
   - [ ] run refiner in fp16/bf16:
         1) downsample teacher depth/uncertainty to SSM resolution
+        1b) compute confidence c(x) from uncertainty; feed as channel and as control signal for clamp/loss weights
         2) SSM over low-res sequence → ΔD_low; optional mid-res SSM branch
         3) fuse and upsample residuals using stored mapping M to align grids
         4) high-res refinement CNN adds δD_full using teacher_full + upsampled_refined (+ edges/uncertainty/guidance maps)
@@ -204,7 +212,9 @@ Teacher is frozen. Student predicts small residual ΔD only.
   - [ ] upsample refined depth to full resolution (with intrinsics); optionally edge-aware/guided upsampling (guided by teacher depth or RGB) to preserve edges
   - [ ] clamp ranges
   - [ ] residual clamp configurable (soft during training, optional hard at inference):
-        |ΔD| ≤ max(α·D_teacher, β), tunable α/β; loosen when teacher uncertainty is high; tighter in confident/static regions
+        B(x) = max(α·D_teacher(x), β) * (γ + (1 − c(x)));
+        high confidence → clamp tight (≈ α·D_teacher), low confidence → loosen up to ~2×
+        enforce |ΔD(x)| ≤ B(x); prefer soft clamp (tanh/quadratic) during training
   - [ ] export:
         per-frame .npy
         16-bit PNG optional
@@ -223,6 +233,10 @@ Teacher is frozen. Student predicts small residual ΔD only.
   - static-mask MAD variance
   - flow-warped SSIM / LPIPS
   - T-SCIN: LPIPS on temporal gradients
+- [ ] Uncertainty-stratified metrics:
+  - bin pixels by confidence (high / medium / low using c(x))
+  - report AbsRel, RMSE, temporal variance, LPIPS/SSIM on temporal gradients, average |ΔD| per bin
+  - desired: high-confidence bin → ΔD ≈ 0; low-confidence bin → larger but useful corrections that cut flicker
 - [ ] Baselines to beat:
   - raw UniDepth
   - EMA
@@ -234,6 +248,19 @@ Teacher is frozen. Student predicts small residual ΔD only.
 - [ ] Success criteria:
   - lower flicker
   - zero or extremely tiny regression on per-frame metrics
+
+---
+
+# Optional Uncertainty-Aware Refinements
+- [ ] Temporal smoothing of confidence:
+  - EMA on calibrated confidence c(x,t): c_smooth(t) = η c_smooth(t-1) + (1-η) c_raw(t), η ∈ [0.7, 0.9] (use η≈0.8)
+  - stabilizes loss weights and residual clamps by reducing frame-to-frame jitter
+- [ ] Uncertainty gradient features:
+  - include spatial gradients ∇u = (∂x u, ∂y u) and temporal gradient ∂t u = u_t − u_{t-1} as optional input channels to the spatial encoder / refinement CNN
+  - highlights disocclusions, motion boundaries, and changing teacher confidence
+- [ ] Confidence-aware temporal weight with occlusion gating:
+  - w_temp(x) = m(x) · [ w0 · (1 + k · (1 − c(x))) ], where m(x) ∈ [0,1] is occlusion/flow reliability (0 = ignore)
+  - high confidence → small w_temp; low confidence → increased smoothing; occluded/fast-motion regions → w_temp suppressed
 
 ---
 

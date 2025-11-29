@@ -4,3 +4,4 @@ Depth-Anything-V2/checkpoints
 
 .vscode/
 
+scripts/data_prep/__pycache__/
