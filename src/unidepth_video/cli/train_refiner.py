@@ -10,9 +10,9 @@ import torch
 from torch.cuda.amp import autocast, GradScaler
 from torch.utils.data import DataLoader
 
-from scripts.dataset_video import HypersimWindowDataset, collate_windows
-from scripts.models.temporal_refiner import TemporalRefiner
-from scripts.training_utils.temporal_helpers import (
+from unidepth_video.data.dataset_video import HypersimWindowDataset, collate_windows
+from unidepth_video.models.temporal_refiner import TemporalRefiner, TemporalRefinerConfig
+from unidepth_video.training.temporal_helpers import (
     choose_gt_mask,
     collapse_indicators,
     compare_temporal_mad,
@@ -45,7 +45,7 @@ def main():
     dl = DataLoader(ds, batch_size=args.batch_size, shuffle=True, collate_fn=collate_windows)
 
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    model = TemporalRefiner().to(device)
+    model = TemporalRefiner(TemporalRefinerConfig()).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scaler = GradScaler()
 
@@ -57,11 +57,15 @@ def main():
 
         optimizer.zero_grad(set_to_none=True)
         with autocast(enabled=True):
+            time_ids = torch.tensor(batch["frame_indices"], device=device, dtype=torch.float32)
             outputs = model(
                 teacher_low=batch["teacher_low"],
                 teacher_full=batch["teacher_full"],
+                uncert_low=batch["uncert_low"],
+                uncert_full=batch["uncert_full"],
                 edges_rgb=batch.get("edges_rgb"),
                 edges_depth=batch.get("edges_depth"),
+                time_ids=time_ids,
             )
             refined = outputs["refined"]
             delta = outputs["delta_low_up"] + outputs["delta_full"]
@@ -91,6 +95,8 @@ def main():
         # Collapse indicators
         mean_abs, frac_small = collapse_indicators(delta, tau=1e-4)
         mad_ratio = compare_temporal_mad(refined, teacher)
+        clamp_low = outputs.get("clamp_hit_rate_low", torch.tensor(0.0, device=device))
+        clamp_full = outputs.get("clamp_hit_rate_full", torch.tensor(0.0, device=device))
 
         scaler.scale(l_close).backward()
         scaler.step(optimizer)
@@ -100,7 +106,8 @@ def main():
             f"step {step} | L_close {l_close.item():.4f} "
             f"| L_gt {l_gt.item():.4f} | L_teacher {l_teacher.item():.4f} "
             f"| mean|ΔD| {mean_abs.item():.6f} | frac|ΔD|<1e-4 {frac_small.item():.4f} "
-            f"| MAD ratio (ref/teacher) {mad_ratio:.4f}"
+            f"| MAD ratio (ref/teacher) {mad_ratio:.4f} "
+            f"| clamp hit low {clamp_low.item():.4f} | clamp hit full {clamp_full.item():.4f}"
         )
 
         if step > 5:  # short demo

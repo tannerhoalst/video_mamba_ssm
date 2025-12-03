@@ -2,7 +2,7 @@
 Utilities for GT mixing, teacher jitter, and collapse indicators.
 
 Usage (dataset):
-    from scripts.training_utils.temporal_helpers import apply_teacher_jitter, choose_gt_mask
+    from unidepth_video.training.temporal_helpers import apply_teacher_jitter, choose_gt_mask
     depth_in, used = apply_teacher_jitter(teacher_depth, p_jitter=0.2)
 
 Usage (loss loop):

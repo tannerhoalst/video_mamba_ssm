@@ -179,41 +179,15 @@ python scripts/precompute_unidepth_depth.py \
   --model-id lpiccinelli/unidepth-v2-vitb14 \
   --batch-size 4 \
   --low-factor 2
+
+
+pip install -e .
+
+python scripts/debug_window_sample.py --data-root /mnt/vrdata/depth_ground_truth/hypersim_prepared --window 12 --overlap 6
+
+python scripts/train_refiner_stub.py --data-root /mnt/vrdata/depth_ground_truth/hypersim --window 12 --overlap 6 --batch-size 1 --device cuda
 ```
 
-thoalst@computer:/mnt/vrdata/video_mamba_depth$ source .venv/bin/activate
-(.venv) thoalst@computer:/mnt/vrdata/video_mamba_depth$ python scripts/baseline_temporal_filters.py \
-  --input-stack /mnt/vrdata/depth_maps/unidepth/run1/sngllittlepucknathan_8kvr265_right_flat_2880x2688_h265_clip03_depth_stack.npy \
-  --output-dir /mnt/vrdata/depth_maps/unidepth/run1/filters_clip03 \
-  --save-ema --save-bilateral \
-  --ema-alpha 0.8 \
-  --bilateral-sigma-rel 0.05 \
-  --static-thresh-rel 0.02 \
-  --output-dtype float16 \
-  --median-sample-frames 64 \
-  --median-sample-pixels 2000000
-Loaded stack (3123, 2688, 2880), dtype=float16, approx_median_depth=2.6250 (sampled 64 frames / 2000000 pixels)
-EMA alpha=0.8
-Bilateral sigma=0.131250 (rel=0.05)
-Static threshold=0.052500 (rel=0.02)
-                                                                                                                                                                                                    
-Flicker (mean abs diff frame-to-frame):
-  Raw   : global=0.028888  static=0.010602
-  EMA   : global=0.013450  static=0.004460
-  Bilat : global=0.023503  static=0.007137
-Saved EMA to /mnt/vrdata/depth_maps/unidepth/run1/filters_clip03/ema.npy
-Saved bilateral to /mnt/vrdata/depth_maps/unidepth/run1/filters_clip03/bilateral.npy
-(.venv) thoalst@computer:/mnt/vrdata/video_mamba_depth$ python scripts/calibrate_uncertainty.py \
-  --depth-stack /mnt/vrdata/depth_maps/unidepth/run1/sngllittlepucknathan_8kvr265_right_flat_2880x2688_h265_clip03_depth_stack.npy \
-  --uncert-stack /mnt/vrdata/depth_maps/unidepth/run1/sngllittlepucknathan_8kvr265_right_flat_2880x2688_h265_clip03_uncert_stack.npy \
-  --bins 20 \
-  --curve-csv /mnt/vrdata/depth_maps/unidepth/run1/uncert_curve.csv \
-  --chunk-frames 32
-Depth stack: (3123, 2688, 2880), dtype=float16                                                                                                                                                      
-Uncertainty stack: (3123, 2688, 2880), dtype=float16
-Variance stats: min=0.000356, max=19.332293, median=0.065516
-Uncertainty stats: min=0.662232, max=119.214058, median=1.045826
-Recommended k for weight = exp(-k * uncert/median_uncert): k=0.6261, mse=0.1192
-Saved uncertainty→variance curve to /mnt/vrdata/depth_maps/unidepth/run1/uncert_curve.csv
-(.venv) thoalst@computer:/mnt/vrdata/video_mamba_depth$ 
 
+
+so can you explain to me what we are trying to achieve in phase 2, and what would be the best way to achieve that?

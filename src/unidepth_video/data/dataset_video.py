@@ -18,27 +18,34 @@ Note:
 from __future__ import annotations
 
 import json
+import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Optional
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from PIL import Image
 
-from scripts.training_utils.temporal_helpers import apply_teacher_jitter
+from unidepth_video.training.temporal_helpers import apply_teacher_jitter
+from unidepth_video.data.transforms import check_no_nans
 
 
 @dataclass
 class Sample:
     rgb: torch.Tensor                # [3, Hf, Wf], float32 in [0,1]
+    rgb_low: torch.Tensor            # [3, Hs, Ws], float32 in [0,1]
     teacher_full: torch.Tensor       # [1, Hf, Wf], float32 meters
     teacher_low: torch.Tensor        # [1, Hs, Ws], float32 meters
+    uncert_full: torch.Tensor        # [1, Hf, Wf], float32
+    uncert_low: torch.Tensor         # [1, Hs, Ws], float32
     depth_gt: Optional[torch.Tensor] # [1, Hf, Wf] or None
     has_gt: bool
     intrinsics_full: Dict
     intrinsics_low: Dict
-    mapping: Dict                    # contains scale & pad for low→full
+    mapping: Dict                    # contains scale & pad for low→full (metadata)
+    mapping_tensor: torch.Tensor     # [4, Hs, Ws] -> sy, sx, pad_top, pad_left
     edges_rgb: Optional[torch.Tensor]
     edges_depth: Optional[torch.Tensor]
     meta: Dict                       # raw manifest entry
@@ -98,6 +105,18 @@ class HypersimFrameDataset(torch.utils.data.Dataset):
         teacher_full = self._load_npy(e["depth_gt_path"])
         teacher_low = self._load_npy(e["depth_low_path"])
 
+        # Uncertainty (optional)
+        if "uncert_full_path" in e:
+            uncert_full = self._load_npy(e["uncert_full_path"])
+        else:
+            uncert_full = torch.zeros_like(teacher_full)
+        if "uncert_low_path" in e:
+            uncert_low = self._load_npy(e["uncert_low_path"])
+        else:
+            uncert_low = F.interpolate(
+                uncert_full.unsqueeze(0), size=teacher_low.shape[-2:], mode="bilinear", align_corners=False
+            ).squeeze(0)
+
         edges_rgb = edges_depth = None
         if self.load_edges:
             edges_rgb = self._load_npy(e["edges_rgb_path"])
@@ -113,15 +132,47 @@ class HypersimFrameDataset(torch.utils.data.Dataset):
             sigma_rel=self.jitter_sigma_rel,
         )
 
+        # RGB low-res aligned to teacher_low grid
+        rgb_low = F.interpolate(
+            rgb.unsqueeze(0),
+            size=teacher_low.shape[-2:],
+            mode="bilinear",
+            align_corners=False,
+        ).squeeze(0)
+
+        # Mapping tensor (sy, sx, pad_top, pad_left) expanded to grid
+        scale = float(e["mapping"].get("scale", e["mapping"].get("low_factor", 1)))
+        pad = e["mapping"].get("pad", [0, 0, 0, 0])  # [pad_top, pad_bottom, pad_left, pad_right]
+        sy = scale
+        sx = scale
+        pad_top = float(pad[0])
+        pad_left = float(pad[2]) if len(pad) > 2 else 0.0
+        Hs, Ws = teacher_low.shape[-2:]
+        mapping_tensor = torch.stack(
+            [
+                torch.full((Hs, Ws), sy, dtype=torch.float32),
+                torch.full((Hs, Ws), sx, dtype=torch.float32),
+                torch.full((Hs, Ws), pad_top, dtype=torch.float32),
+                torch.full((Hs, Ws), pad_left, dtype=torch.float32),
+            ],
+            dim=0,
+        )
+
+        check_no_nans(rgb, teacher_full, teacher_in, uncert_full, uncert_low, mapping_tensor)
+
         sample = Sample(
             rgb=rgb,
+            rgb_low=rgb_low,
             teacher_full=teacher_full,
             teacher_low=teacher_in,
+            uncert_full=uncert_full,
+            uncert_low=uncert_low,
             depth_gt=depth_gt if has_gt else None,
             has_gt=has_gt,
             intrinsics_full=e["intrinsics_full"],
             intrinsics_low=e["intrinsics_low"],
             mapping=e["mapping"],
+            mapping_tensor=mapping_tensor,
             edges_rgb=edges_rgb,
             edges_depth=edges_depth,
             meta=e,
@@ -180,6 +231,7 @@ class HypersimWindowDataset(torch.utils.data.Dataset):
         load_edges: bool = True,
         keyframe_stride: Optional[int] = None,
         keyframe_offset: int = 0,
+        p_reverse: float = 0.2,
     ):
         super().__init__()
         self.frame_ds = HypersimFrameDataset(
@@ -194,6 +246,7 @@ class HypersimWindowDataset(torch.utils.data.Dataset):
         self.drop_tail = drop_tail
         self.keyframe_stride = keyframe_stride
         self.keyframe_offset = keyframe_offset
+        self.p_reverse = p_reverse
 
         # Build scene -> indices mapping
         by_scene: Dict[str, List[int]] = {}
@@ -224,9 +277,19 @@ class HypersimWindowDataset(torch.utils.data.Dataset):
         scene, idxs = self.windows[i]
         samples = [self.frame_ds[j] for j in idxs]
 
+        # Optional temporal reversal augmentation
+        reversed_flag = False
+        if getattr(self, "p_reverse", 0.0) > 0 and random.random() < self.p_reverse:
+            samples = list(reversed(samples))
+            reversed_flag = True
+
         rgb = torch.stack([s.rgb for s in samples], dim=0)                     # [N,3,Hf,Wf]
+        rgb_low = torch.stack([s.rgb_low for s in samples], dim=0)             # [N,3,Hs,Ws]
         teacher_full = torch.stack([s.teacher_full for s in samples], dim=0)   # [N,1,Hf,Wf]
         teacher_low = torch.stack([s.teacher_low for s in samples], dim=0)     # [N,1,Hs,Ws]
+        uncert_full = torch.stack([s.uncert_full for s in samples], dim=0)     # [N,1,Hf,Wf]
+        uncert_low = torch.stack([s.uncert_low for s in samples], dim=0)       # [N,1,Hs,Ws]
+        mapping_tensor = torch.stack([s.mapping_tensor for s in samples], dim=0)  # [N,4,Hs,Ws]
 
         has_gt = torch.tensor([s.has_gt for s in samples], dtype=torch.bool)
         depth_gt = [s.depth_gt for s in samples]
@@ -237,6 +300,14 @@ class HypersimWindowDataset(torch.utils.data.Dataset):
         if samples[0].edges_depth is not None:
             edges_depth = torch.stack([s.edges_depth for s in samples], dim=0)
 
+        # Optional flow/occlusion masks
+        flow = None
+        occ = None
+        if samples[0].meta.get("flow_low_path"):
+            flow = torch.stack([self.frame_ds._load_npy(s.meta["flow_low_path"]) for s in samples], dim=0)  # [N,2,Hs,Ws]
+        if samples[0].meta.get("occ_low_path"):
+            occ = torch.stack([self.frame_ds._load_npy(s.meta["occ_low_path"]) for s in samples], dim=0)    # [N,1,Hs,Ws]
+
         # Keyframe pattern
         keyframe_mask = torch.zeros(len(samples), dtype=torch.bool)
         if self.keyframe_stride is not None and self.keyframe_stride > 0:
@@ -244,25 +315,36 @@ class HypersimWindowDataset(torch.utils.data.Dataset):
                 keyframe_mask[k] = True
             # always ensure first frame is a keyframe
             keyframe_mask[0] = True
+        if reversed_flag:
+            keyframe_mask = torch.flip(keyframe_mask, dims=[0])
 
         out = {
             "rgb": rgb,
+            "rgb_low": rgb_low,
             "teacher_full": teacher_full,
             "teacher_low": teacher_low,
+            "uncert_full": uncert_full,
+            "uncert_low": uncert_low,
             "has_gt": has_gt,
             "depth_gt": depth_gt,
             "intrinsics_full": [s.intrinsics_full for s in samples],
             "intrinsics_low": [s.intrinsics_low for s in samples],
             "mapping": [s.mapping for s in samples],
+            "mapping_tensor": mapping_tensor,
             "scene_id": scene,
             "frame_indices": [s.meta["frame_index"] for s in samples],
             "jitter_applied": torch.tensor([s.jitter_applied for s in samples], dtype=torch.bool),
             "keyframe_mask": keyframe_mask,
+            "reversed": reversed_flag,
         }
         if edges_rgb is not None:
             out["edges_rgb"] = edges_rgb
         if edges_depth is not None:
             out["edges_depth"] = edges_depth
+        if flow is not None:
+            out["flow"] = flow
+        if occ is not None:
+            out["occ"] = occ
         return out
 
 
@@ -270,20 +352,29 @@ def collate_windows(batch: List[Dict]) -> Dict[str, torch.Tensor | List]:
     """Collate for HypersimWindowDataset."""
     out = {
         "rgb": torch.stack([b["rgb"] for b in batch], dim=0),                     # [B,N,3,Hf,Wf]
+        "rgb_low": torch.stack([b["rgb_low"] for b in batch], dim=0),             # [B,N,3,Hs,Ws]
         "teacher_full": torch.stack([b["teacher_full"] for b in batch], dim=0),
         "teacher_low": torch.stack([b["teacher_low"] for b in batch], dim=0),
+        "uncert_full": torch.stack([b["uncert_full"] for b in batch], dim=0),
+        "uncert_low": torch.stack([b["uncert_low"] for b in batch], dim=0),
         "has_gt": torch.stack([b["has_gt"] for b in batch], dim=0),
         "depth_gt": [b["depth_gt"] for b in batch],
         "intrinsics_full": [b["intrinsics_full"] for b in batch],
         "intrinsics_low": [b["intrinsics_low"] for b in batch],
         "mapping": [b["mapping"] for b in batch],
+        "mapping_tensor": torch.stack([b["mapping_tensor"] for b in batch], dim=0),
         "scene_id": [b["scene_id"] for b in batch],
         "frame_indices": [b["frame_indices"] for b in batch],
         "jitter_applied": torch.stack([b["jitter_applied"] for b in batch], dim=0),
         "keyframe_mask": torch.stack([b["keyframe_mask"] for b in batch], dim=0),
+        "reversed": torch.tensor([b.get("reversed", False) for b in batch], dtype=torch.bool),
     }
     if "edges_rgb" in batch[0]:
         out["edges_rgb"] = torch.stack([b["edges_rgb"] for b in batch], dim=0)
     if "edges_depth" in batch[0]:
         out["edges_depth"] = torch.stack([b["edges_depth"] for b in batch], dim=0)
+    if "flow" in batch[0]:
+        out["flow"] = torch.stack([b["flow"] for b in batch], dim=0)
+    if "occ" in batch[0]:
+        out["occ"] = torch.stack([b["occ"] for b in batch], dim=0)
     return out
