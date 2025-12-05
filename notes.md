@@ -35,11 +35,11 @@ TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0+PTX" uv pip install -v --no-build-isolatio
 cd ../../../..
 
 python -m unidepth.models.unidepthv2.inference \
-  --image /home/thoalst/Pictures/Screenshots/ufc.png \
+  --image /home/thoalst/Pictures/Screenshots/savannahbond.jpeg \
   --model-id lpiccinelli/unidepth-v2-vitb14 \
-  --save-depth /mnt/vrdata/depth_maps/unidepth/ufc.npy
+  --save-depth /mnt/vrdata/depth_maps/unidepth/savannahbond.npy
 
-python scripts/visualize_depth.py /mnt/vrdata/depth_maps/unidepth/ufc.npy
+python scripts/visualize_depth.py /mnt/vrdata/depth_maps/unidepth/savannahbond.npy
 
 python scripts/benchmark_unidepth_inprocess.py --image /home/thoalst/Pictures/Screenshots/ufc.png --runs 60 --warmup 3 --model-id lpiccinelli/unidepth-v2-vitb14
 

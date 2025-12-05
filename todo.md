@@ -154,10 +154,14 @@ Teacher is frozen. Student predicts small residual ΔD only.
   - compute at low-res for SSM output and optionally at full-res for refinement δD_full
   - optional small metric consistency stabilizer: α · ‖D_final − D_teacher‖1 with α≈0.01
 - [ ] Temporal consistency:
-  - match ∂(log D)/∂t between refined frames (same pixel coords; no warping)
-  - small-change mask in metric space: g = log(D_teacher); Δg = g_t − g_{t-1}; apply loss only where |Δg| < τ (e.g., τ = 0.05·g or 5 cm cap) to avoid edges/fast movers dominating
-  - confidence-aware temporal weight with occlusion gating: w_temp(x) = m(x) · [ w0 · (1 + k · (1 − c(x))) ], where m(x) ∈ [0,1] gates occlusion/motion; high confidence → smaller w_temp; low confidence → stronger smoothing; occluded/fast-motion regions → w_temp suppressed
-  - avoid raw-depth gradients (worse stability)
+  - enforce on residuals ΔD (not raw depths) to match teacher temporal gradients and avoid flicker/lag/scale drift
+  - teacher temporal change (metric): ΔT_teacher = D_teacher[t] − D_teacher[t−1]
+  - small-change mask: m_sc = 1 if |ΔT_teacher| < τ else 0; set τ = max(0.05 · D_teacher, 0.05 m)
+  - residual temporal gradient loss: L_tgrad = ||ΔD[t] − ΔD[t−1]||_1, applied where m_sc = 1 (computed in linear depth space because ΔD is additive: D_final = D_teacher + ΔD)
+  - confidence-aware weighting (merged): w_temp = m_occ · m_sc · (1 + k · (1 − c(x))) · (c(x) + ε)^(-β); c(x) = teacher confidence; m_occ ∈ [0,1] occlusion/motion gate; k ≈ 0.5–1.0; β ≈ 0.5–1.0
+  - final temporal loss: L_temp = w_temp · L_tgrad
+  - optional tiny acceleration loss for micro-jitter: L_accel = ||ΔD[t+1] − 2ΔD[t] + ΔD[t−1]||_1 with λ ≈ 0.005–0.01
+  - notes: replaces matching ∂(log D)/∂t; correct for residual model; prevents flicker, avoids lag, preserves metric depth, keeps ΔD stable over time
 - [ ] Flow/occlusion gating (training):
   - downweight temporal loss in occluded or very fast-motion regions
   - [ ] optional cheap RGB photometric forward/backward check at low-res for gating only (not supervision)
@@ -272,7 +276,7 @@ Teacher is frozen. Student predicts small residual ΔD only.
 - Model: v0 baseline (low-res CNN encoder → Mamba → CNN decoder → ΔD_low), no mid-res branch, no depth-aware mixing, no high-res refinement CNN.
 - Inputs: [log D_teacher_low, c(x)] only; optional add later ∂x/∂y/∂t u and edges.
 - Clamp: soft tanh clamp with simple B(x)=α·D_teacher+β; log clamp hit-rate.
-- Losses: L_teacher (log-depth L1 weighted by c), L_temp (same-pixel ∂t log D with small-change mask, no occlusion gate initially), L_res (λ_res·c·|ΔD|). Skip photometric, edge-aware, variance term in v0.
+- Losses: L_teacher (log-depth L1 weighted by c), L_temp = ||ΔD[t] − ΔD[t−1]||_1 with small-change mask (no occlusion gate for v0, computed in linear depth), L_res (λ_res·c·|ΔD|). Skip photometric, edge-aware, variance term in v0.
 - Training: fixed canonical size; random window starts; N=12, To=6; AMP, grad clip; log ΔD norm and clamp hit-rate.
 - Inference: overlap blend with quadratic weights; no keyframe decay yet; monitor static-patch drift; no re-anchor yet.
 - Evaluation: per-frame AbsRel/RMSE/δ; temporal static-patch variance; qualitative slow-mo compare teacher vs refined.
